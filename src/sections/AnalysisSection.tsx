@@ -88,20 +88,23 @@ export function AnalysisSection() {
             <p className="text-xs uppercase tracking-[0.4em] text-white/60">
               Waveform insights library
             </p>
-            <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
-              <div className="relative aspect-[16/10] w-full md:aspect-[16/9]">
-                <img
-                  src="/assets/control-panel-live.jpg"
-                  alt="Waveform insights library"
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full object-contain sm:object-cover"
-                />
-              </div>
-            </div>
-            <p className="mt-6 text-sm text-white/70">
-              Clinicians can reference representative morphology signatures to validate
-              arrhythmia detections, compare ischemic changes, and confirm conduction block
-              patterns without leaving the live session.
+            <ul className="mt-4 space-y-3 text-sm text-white/80">
+              {[
+                "Atrial arrhythmias: atrial fibrillation, flutter, supraventricular tachycardia, junctional rhythms",
+                "Ventricular events: ventricular ectopics, ventricular tachycardia, premature ventricular complexes",
+                "Conduction changes: AV blocks (first, second, high-grade), bundle branch blocks, WPW patterns",
+                "Ischemia profiles: anterior, inferior, lateral, and septal myocardial infarction variations"
+              ].map((item) => (
+                <li
+                  key={item}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 leading-relaxed"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 text-xs uppercase tracking-[0.35em] text-white/50">
+              Reference templates keep clinicians aligned on morphology decisions
             </p>
           </motion.div>
         </div>
@@ -138,16 +141,6 @@ export function AnalysisSection() {
                 tachycardia, premature ventricular contractions, sinus bradycardia, and
                 sinus tachycardia—confirming normal sinus rhythm when appropriate.
               </p>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
-                <div className="relative aspect-[16/10] w-full">
-                  <img
-                    src="/assets/control-panel-idle.jpg"
-                    alt="HRV and arrhythmia detection overview"
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-contain sm:object-cover"
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
@@ -165,16 +158,6 @@ export function AnalysisSection() {
                 Our CardioX engine recognizes over 80 diagnostic ECG patterns—including
                 ischemia, arrhythmias, conduction blocks, and nuanced HRV trends.
               </p>
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
-                <div className="relative aspect-[16/10] w-full">
-                  <img
-                    src="/assets/control-panel-live.jpg"
-                    alt="ECG waveform library illustration"
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-contain sm:object-cover"
-                  />
-                </div>
-              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
