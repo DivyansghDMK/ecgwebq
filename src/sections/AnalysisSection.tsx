@@ -153,6 +153,20 @@ export function AnalysisSection() {
             </div>
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+              <h4 className="font-display text-xl text-white">AI Image Model Training</h4>
+              <p className="mt-3 text-sm text-white/70">
+                CardioX incorporates a continual learning pipeline where annotated ECG waveforms
+                feed convolutional and transformer-based models. Each confirmed diagnosis becomes
+                a labeled frame, enriching the dataset for future inference cycles.
+              </p>
+              <ul className="mt-4 space-y-3 text-sm text-white/70">
+                <li>• Curates ECG images with clinician-approved labels before training.</li>
+                <li>• Uses data augmentation to preserve morphology while expanding diversity.</li>
+                <li>• Pushes updated models to the device for on-site arrhythmia detection.</li>
+              </ul>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
               <h4 className="font-display text-xl text-white">CardioX Diagnostic Coverage</h4>
               <p className="mt-3 text-sm text-white/70">
                 Our CardioX engine recognizes over 80 diagnostic ECG patterns—including
