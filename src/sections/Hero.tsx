@@ -62,12 +62,15 @@ export function Hero() {
                 Authenticate via hospital ID, phone number, or biometric passkeys.
                 Designed for rapid access without compromising security.
               </p>
-              <div className="mt-6 h-56 w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black via-slate-900 to-slate-950 shadow-inner">
-                <img
-                  src="/assets/login-screen.jpg"
-                  alt="CardioX Login Screen"
-                  className="h-full w-full object-cover object-center opacity-80"
-                />
+              <div className="mt-6 w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black via-slate-900 to-slate-950 shadow-inner">
+                <div className="relative aspect-[16/10] w-full">
+                  <img
+                    src="/assets/login-screen.jpg"
+                    alt="CardioX Login Screen"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-contain object-center opacity-90 sm:object-cover"
+                  />
+                </div>
               </div>
             </motion.div>
 

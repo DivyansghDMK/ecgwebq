@@ -54,21 +54,27 @@ export function ControlPanel() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-4">
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-                <img
-                  src="/assets/control-panel-idle.jpg"
-                  alt="CardioX control panel idle mode"
-                  className="h-60 w-full rounded-2xl object-cover"
-                />
+                <div className="relative aspect-[16/10] w-full">
+                  <img
+                    src="/assets/control-panel-idle.jpg"
+                    alt="CardioX control panel idle mode"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full rounded-2xl object-contain sm:object-cover"
+                  />
+                </div>
                 <p className="mt-3 text-xs uppercase tracking-[0.3em] text-white/60">
                   Idle Mode • Awaiting ECG capture
                 </p>
               </div>
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
-                <img
-                  src="/assets/control-panel-live.jpg"
-                  alt="CardioX control panel live mode"
-                  className="h-60 w-full rounded-2xl object-cover"
-                />
+                <div className="relative aspect-[16/10] w-full">
+                  <img
+                    src="/assets/control-panel-live.jpg"
+                    alt="CardioX control panel live mode"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full rounded-2xl object-contain sm:object-cover"
+                  />
+                </div>
                 <p className="mt-3 text-xs uppercase tracking-[0.3em] text-white/60">
                   Live Mode • Demo ON
                 </p>

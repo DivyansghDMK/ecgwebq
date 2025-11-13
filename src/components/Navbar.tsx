@@ -14,7 +14,7 @@ const navItems = [
   { href: "#dashboard", label: "Dashboard" },
   { href: "#control", label: "Control" },
   { href: "#analysis", label: "Analysis" },
-  { href: "#admin", label: "Admin" },
+  { href: "#device", label: "Device" },
   { href: "#support", label: "Support" },
   { href: "#cta", label: "Get Access" }
 ];
@@ -24,24 +24,26 @@ export function Navbar() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-slate-950/75 backdrop-blur-xl">
-      <div className="mx-auto flex h-20 w-full max-w-6xl items-center justify-between px-6">
-        <Logo />
-        <nav className="hidden items-center gap-10 md:flex">
+      <div className="mx-auto flex h-20 w-full max-w-6xl items-center gap-4 px-3 sm:px-6">
+        <div className="flex-none">
+          <Logo />
+        </div>
+        <nav className="hidden flex-1 items-center justify-center gap-5 md:flex">
           {navItems.map((item) => (
             <a
               key={item.href}
               href={item.href}
-              className="text-sm font-medium uppercase tracking-[0.3em] text-white/70 transition hover:text-white"
+              className="text-[0.68rem] font-medium uppercase tracking-[0.32em] text-white/70 transition hover:text-white"
             >
               {item.label}
             </a>
           ))}
         </nav>
-        <div className="hidden items-center gap-3 md:flex">
-          <Button variant="secondary" className="uppercase tracking-[0.2em]">
+        <div className="hidden flex-none items-center gap-3 md:flex">
+          <Button variant="secondary" className="px-4 uppercase tracking-[0.22em]">
             Book Demo
           </Button>
-          <Button className="uppercase tracking-[0.2em]">
+          <Button className="px-4 uppercase tracking-[0.22em]">
             Explore Platform
           </Button>
         </div>
@@ -68,7 +70,7 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium uppercase tracking-[0.25em] text-white/80 transition",
+                  "block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition",
                     "hover:bg-white/10 hover:text-white"
                   )}
                   onClick={() => setIsOpen(false)}

@@ -13,7 +13,7 @@ const footerLinks: Array<{ heading: string; items: FooterLink[] }> = [
       { label: "Product Overview", href: "#overview" },
       { label: "Clinical Dashboard", href: "#dashboard" },
       { label: "Control Panel", href: "#control" },
-      { label: "Admin Console", href: "#admin" }
+      { label: "Device Console", href: "#device" }
     ]
   },
   {

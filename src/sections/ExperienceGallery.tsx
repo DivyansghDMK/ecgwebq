@@ -54,12 +54,15 @@ export function ExperienceGallery() {
           >
             <Card className="h-full border-white/10 bg-white/5">
               <CardContent className="space-y-4 p-6">
-                <div className="overflow-hidden rounded-3xl border border-white/10">
-                  <img
+                <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/40">
+                  <div className="relative aspect-[16/10] w-full">
+                    <img
                     src={item.image}
-                    alt={item.title}
-                    className="h-64 w-full object-cover"
-                  />
+                      alt={item.title}
+                    loading="lazy"
+                      className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <h3 className="font-display text-xl text-white">{item.title}</h3>

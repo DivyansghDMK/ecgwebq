@@ -72,10 +72,7 @@ export function SupportSection() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-white/70">
                 {service.points.map((point) => (
-                  <div
-                    key={point}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-                  >
+                  <div key={point} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     {point}
                   </div>
                 ))}

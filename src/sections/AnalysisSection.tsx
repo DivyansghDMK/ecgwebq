@@ -41,77 +41,159 @@ export function AnalysisSection() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <motion.div
-          className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true, amount: 0.3 }}
-        >
-          <p className="text-xs uppercase tracking-[0.4em] text-white/60">
-            Lead II • Detailed waveform analysis
-          </p>
-          <div className="mt-4 h-[320px] overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
-            <img
-              src="/assets/analysis-lead-ii.jpg"
-              alt="Lead II waveform analysis screen"
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <Badge variant="neutral" className="tracking-[0.3em]">
-              Rhythm Interpretation: Sinus Bradycardia
-            </Badge>
-            <p className="text-xs uppercase tracking-[0.35em] text-white/50">
-              Amplification controls • Auto smoothing • Crash recovery
+        <div className="space-y-6">
+          <motion.div
+            className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true, amount: 0.3 }}
+          >
+            <p className="text-xs uppercase tracking-[0.4em] text-white/60">
+              Lead II • Detailed waveform analysis
             </p>
-          </div>
-        </motion.div>
+            <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
+              <div className="relative aspect-[16/10] w-full md:aspect-[16/9]">
+                <img
+                  src="/assets/analysis-lead-ii.jpg"
+                  alt="Lead II waveform analysis screen"
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                />
+              </div>
+            </div>
+            <div className="mt-6 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <Badge variant="neutral" className="tracking-[0.3em]">
+                  Rhythm Interpretation: Sinus Bradycardia
+                </Badge>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                  Amplification controls • Auto smoothing • Crash recovery
+                </p>
+              </div>
+              <p className="rounded-3xl border border-white/10 bg-gradient-to-r from-brand-orange/15 via-brand-electric/10 to-transparent px-6 py-5 text-base font-semibold text-white md:text-lg">
+                It can record patient signals continuously for 24 hours and generate focused
+                analytics covering the last <span className="font-bold text-brand-electric">2 hours</span>.
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            viewport={{ once: true, amount: 0.3 }}
+          >
+            <p className="text-xs uppercase tracking-[0.4em] text-white/60">
+              Waveform insights library
+            </p>
+            <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
+              <div className="relative aspect-[16/10] w-full md:aspect-[16/9]">
+                <img
+                  src="/assets/control-panel-live.jpg"
+                  alt="Waveform insights library"
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                />
+              </div>
+            </div>
+            <p className="mt-6 text-sm text-white/70">
+              Clinicians can reference representative morphology signatures to validate
+              arrhythmia detections, compare ischemic changes, and confirm conduction block
+              patterns without leaving the live session.
+            </p>
+          </motion.div>
+        </div>
 
         <div className="space-y-6">
           <motion.div
-            className="rounded-3xl border border-white/10 bg-white/5 p-6"
+            className="grid gap-6"
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true, amount: 0.3 }}
           >
-            <h3 className="font-display text-2xl text-white">
-              Automated interpretations with clinician oversight
-            </h3>
-            <p className="mt-3 text-sm text-white/70">
-              Combined local + cloud engines interpret thousands of rhythms, while
-              cardiologists retain full control with manual overrides and annotations.
-            </p>
-            <ul className="mt-5 space-y-3 text-sm text-white/70">
-              <li>• AI-driven anomaly detection and trend tagging</li>
-              <li>• Layered annotations for multi-specialist collaboration</li>
-              <li>• Export structured insights via JSON or HL7-compatible payloads</li>
-            </ul>
-          </motion.div>
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+              <h3 className="font-display text-2xl text-white">
+                Automated interpretations with clinician oversight
+              </h3>
+              <p className="mt-3 text-sm text-white/70">
+                Combined local + cloud engines interpret thousands of rhythms, while
+                cardiologists retain full control with manual overrides and annotations.
+              </p>
+              <ul className="mt-5 space-y-3 text-sm text-white/70">
+                <li>• AI-driven anomaly detection and trend tagging</li>
+                <li>• Layered annotations for multi-specialist collaboration</li>
+                <li>• Export structured insights via JSON or HL7-compatible payloads</li>
+              </ul>
+            </div>
 
-          <motion.div
-            className="grid gap-4 md:grid-cols-2"
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            {analysisMetrics.map((metric) => (
-              <Card key={metric.label} className="border-white/10 bg-white/5">
-                <CardHeader>
-                  <CardTitle>{metric.label}</CardTitle>
-                  <Badge variant="neutral" className="tracking-[0.3em]">
-                    {metric.status}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-lg text-white">
-                    {metric.value}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            ))}
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+              <h4 className="font-display text-xl text-white">
+                Automated Arrhythmia Screening
+              </h4>
+              <p className="mt-3 text-sm text-white/70">
+                Continuously analyzes live ECG to flag atrial fibrillation, ventricular
+                tachycardia, premature ventricular contractions, sinus bradycardia, and
+                sinus tachycardia—confirming normal sinus rhythm when appropriate.
+              </p>
+              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+                <div className="relative aspect-[16/10] w-full">
+                  <img
+                    src="/assets/control-panel-idle.jpg"
+                    alt="HRV and arrhythmia detection overview"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+              <h4 className="font-display text-xl text-white">Dynamic Clinical Conclusions</h4>
+              <p className="mt-3 text-sm text-white/70">
+                Builds a live Findings & Recommendations summary from current ECG metrics,
+                storing narratives with time stamps so clinicians have instant,
+                plain-language insights to review or share.
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+              <h4 className="font-display text-xl text-white">CardioX Diagnostic Coverage</h4>
+              <p className="mt-3 text-sm text-white/70">
+                Our CardioX engine recognizes over 80 diagnostic ECG patterns—including
+                ischemia, arrhythmias, conduction blocks, and nuanced HRV trends.
+              </p>
+              <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+                <div className="relative aspect-[16/10] w-full">
+                  <img
+                    src="/assets/control-panel-live.jpg"
+                    alt="ECG waveform library illustration"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {analysisMetrics.map((metric) => (
+                <Card key={metric.label} className="border-white/10 bg-white/5">
+                  <CardHeader>
+                    <CardTitle>{metric.label}</CardTitle>
+                    <Badge variant="neutral" className="tracking-[0.3em]">
+                      {metric.status}
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-lg text-white">
+                      {metric.value}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </motion.div>
         </div>
       </div>

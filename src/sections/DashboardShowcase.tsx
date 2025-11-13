@@ -82,12 +82,15 @@ export function DashboardShowcase() {
                 <p className="text-xs uppercase tracking-[0.4em] text-white/60">
                   ECG Recording — Lead II
                 </p>
-                <div className="mt-4 h-40 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
-                  <img
+                <div className="mt-4 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
+                  <div className="relative aspect-[16/10] w-full">
+                    <img
                     src="/assets/dashboard-overview.jpg"
-                    alt="ECG dashboard overview"
-                    className="h-full w-full object-cover"
-                  />
+                      alt="ECG dashboard overview"
+                    loading="lazy"
+                      className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
