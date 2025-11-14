@@ -24,7 +24,7 @@ export function Navbar() {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-slate-950/75 backdrop-blur-xl">
-      <div className="mx-auto flex h-20 w-full max-w-6xl items-center gap-4 px-3 sm:px-6">
+      <div className="mx-auto flex min-h-[5rem] w-full max-w-6xl items-center gap-4 px-3 py-3 sm:px-6">
         <div className="flex-none">
           <Logo />
         </div>
@@ -33,7 +33,7 @@ export function Navbar() {
             <a
               key={item.href}
               href={item.href}
-              className="text-[0.68rem] font-medium uppercase tracking-[0.32em] text-white/70 transition hover:text-white"
+              className="text-[0.7rem] font-medium uppercase leading-tight tracking-[0.3em] text-white/70 transition hover:text-white"
             >
               {item.label}
             </a>
