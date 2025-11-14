@@ -15,8 +15,7 @@ const navItems = [
   { href: "#control", label: "Control" },
   { href: "#analysis", label: "Analysis" },
   { href: "#device", label: "Device" },
-  { href: "#support", label: "Support" },
-  { href: "#cta", label: "Get Access" }
+  { href: "#support", label: "Support" }
 ];
 
 export function Navbar() {
@@ -39,14 +38,6 @@ export function Navbar() {
             </a>
           ))}
         </nav>
-        <div className="hidden flex-none items-center gap-3 md:flex">
-          <Button variant="secondary" className="px-4 uppercase tracking-[0.22em]">
-            Book Demo
-          </Button>
-          <Button className="px-4 uppercase tracking-[0.22em]">
-            Explore Platform
-          </Button>
-        </div>
         <button
           type="button"
           className="inline-flex items-center justify-center rounded-full border border-white/15 p-2 text-white/80 md:hidden"
@@ -78,12 +69,6 @@ export function Navbar() {
                   {item.label}
                 </motion.a>
               ))}
-              <div className="flex flex-col gap-3 pt-2">
-                <Button variant="secondary" className="w-full">
-                  Book Demo
-                </Button>
-                <Button className="w-full">Explore Platform</Button>
-              </div>
               <Link
                 to="mailto:sales@deckmount.com"
                 className="block text-center text-xs uppercase tracking-[0.3em] text-white/60"
