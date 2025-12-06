@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/sections/Hero";
 import { Features } from "@/sections/Features";
@@ -44,6 +45,7 @@ export default function App() {
         <CtaSection />
       </main>
       <Footer />
+      <Analytics />
     </>
   );
 }
