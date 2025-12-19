@@ -14,6 +14,7 @@ import { CtaSection } from "@/sections/CtaSection";
 import { Footer } from "@/components/Footer";
 import { ChristmasPopup } from "@/components/ChristmasPopup";
 import { Snowfall } from "@/components/Snowfall";
+import { CardmiaChatbot } from "@/components/CardmiaChatbot";
 
 function ScrollToHash() {
   const { hash } = useLocation();
@@ -48,6 +49,7 @@ export default function App() {
         <CtaSection />
       </main>
       <Footer />
+      <CardmiaChatbot />
     </>
   );
 }
