@@ -30,3 +30,30 @@ body {
   @apply text-base text-white/60 max-w-2xl;
 }
 
+/*admin page (light theme) */
+
+.admin-root {
+  color-scheme: light;
+  background: #ffffff;
+}
+
+.admin-root,
+.admin-root * {
+  color: #111 !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+
+/* Inputs fix */
+.admin-root input,
+.admin-root textarea,
+.admin-root select {
+  background-color: #ffffff !important;
+  color: #111 !important;
+  border-color: #d1d5db !important;
+}
+
+.admin-root input::placeholder {
+  color: #6b7280 !important;
+}
