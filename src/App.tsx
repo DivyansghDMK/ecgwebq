@@ -15,6 +15,13 @@ import { Footer } from "@/components/Footer";
 import { ChristmasPopup } from "@/components/ChristmasPopup";
 import { Snowfall } from "@/components/Snowfall";
 import { CardmiaChatbot } from "@/components/CardmiaChatbot";
+import { Routes, Route } from "react-router-dom";
+import AdminLayout from "@/components/admin/layout/AdminLayout";
+import UsersPage from "@/components/admin/users/UsersPage";
+import ReportsPage from "@/components/admin/reports/ReportsPage";
+import AdminLogin from "./components/admin/auth/AdminLogin";
+
+
 
 function ScrollToHash() {
   const { hash } = useLocation();
@@ -31,26 +38,43 @@ function ScrollToHash() {
 
 export default function App() {
   return (
-    <>
-      <Snowfall enabled={true} snowflakeCount={60} />
-      <ChristmasPopup onClose={() => {}} />
-      <Navbar />
-      <main className="flex flex-col gap-6">
-        <ScrollToHash />
-        <Hero />
-        <ExperienceGallery />
-        <ProductOverview />
-        <Features />
-        <DashboardShowcase />
-        <ControlPanel />
-        <AnalysisSection />
-        <AdminSection />
-        <SupportSection />
-        <CtaSection />
-      </main>
-      <Footer />
-      <CardmiaChatbot />
-    </>
+    <Routes>
+      {/*normal url */}
+      <Route
+        path="/"
+        element={
+          <>
+            <Snowfall enabled={true} snowflakeCount={60} />
+            <ChristmasPopup onClose={() => {}} />
+            <Navbar />
+            <main className="flex flex-col gap-6">
+              <ScrollToHash />
+              <Hero />
+              <ExperienceGallery />
+              <ProductOverview />
+              <Features />
+              <DashboardShowcase />
+              <ControlPanel />
+              <AnalysisSection />
+              <AdminSection />
+              <SupportSection />
+              <CtaSection />
+            </main>
+            <Footer />
+            <CardmiaChatbot />
+          </>
+        }
+      />
+
+      {/*admin login */}
+      <Route path="/artists/login" element={<AdminLogin />} />
+
+      {/*admin dashboard */}
+      <Route path="/artists" element={<AdminLayout />}>
+        <Route path="users" element={<UsersPage />} />
+        <Route path="reports" element={<ReportsPage />} />
+      </Route>
+
+    </Routes>
   );
 }
-
