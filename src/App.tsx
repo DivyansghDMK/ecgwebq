@@ -19,7 +19,10 @@ import { Routes, Route } from "react-router-dom";
 import AdminLayout from "@/components/admin/layout/AdminLayout";
 import UsersPage from "@/components/admin/users/UsersPage";
 import ReportsPage from "@/components/admin/reports/ReportsPage";
-import AdminLogin from "./components/admin/auth/AdminLogin";
+import DashboardOverview from "@/components/admin/dashboard/DashboardOverview";
+import AdminLogin from "@/components/admin/auth/AdminLogin";
+import LoginPage from "@/components/auth/LoginPage";
+import Dashboard from "@/components/dashboard/Dashboard";
 
 
 
@@ -71,10 +74,15 @@ export default function App() {
 
       {/*admin dashboard */}
       <Route path="/artists" element={<AdminLayout />}>
+        <Route index element={<DashboardOverview />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="reports" element={<ReportsPage />} />
       </Route>
+      {/* public login for admin / doctor */}
+      <Route path="/login" element={<LoginPage />} />
 
-    </Routes>
+        {/* common dashboard (role-based later) */}
+            <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
   );
 }

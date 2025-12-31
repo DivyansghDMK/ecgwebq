@@ -12,7 +12,8 @@ export default function AdminLogin() {
     //Dummy login (later intg. with admin auth system)
     if (username === "admin" && password === "admin123") {
       localStorage.setItem("admin_logged_in", "true");
-      navigate("/artists/users");
+      localStorage.setItem("role", "admin");
+      navigate("/artists");
     } else {
       setError("Invalid admin credentials");
     }

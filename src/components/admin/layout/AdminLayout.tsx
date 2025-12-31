@@ -10,22 +10,36 @@ export default function AdminLayout() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-xl font-bold text-gray-900">
-          Admin Dashboard – Reports & Users (S3)
+          CardioX Admin Dashboard
         </h1>
 
-        <button
-          onClick={() => {
-            localStorage.removeItem("admin_logged_in");
-            navigate("/artists/login");
-          }}
-          className="bg-red-500 text-white px-4 py-2 rounded"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => {
+              localStorage.removeItem("admin_logged_in");
+              localStorage.removeItem("role");
+              localStorage.removeItem("token");
+              navigate("/artists/login");
+            }}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => navigate("/artists")}
+          className={`px-4 py-2 rounded font-medium ${
+            location.pathname === "/artists" || location.pathname === "/artists/"
+              ? "bg-orange-500 text-white"
+              : "bg-gray-200 text-gray-900"
+          }`}
+        >
+          Dashboard
+        </button>
         <button
           onClick={() => navigate("/artists/users")}
           className={`px-4 py-2 rounded font-medium ${
