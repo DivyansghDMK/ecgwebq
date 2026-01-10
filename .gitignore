@@ -6,3 +6,8 @@ dist/
 *.local
 vite.config.ts.timestamp*
 
+# Environment variables
+.env
+.env.local
+.env.production
+

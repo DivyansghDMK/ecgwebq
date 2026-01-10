@@ -20,7 +20,6 @@ import AdminLayout from "@/components/admin/layout/AdminLayout";
 import UsersPage from "@/components/admin/users/UsersPage";
 import ReportsPage from "@/components/admin/reports/ReportsPage";
 import DashboardOverview from "@/components/admin/dashboard/DashboardOverview";
-import ECGRecordDetail from "@/components/admin/ecg/ECGRecordDetail";
 import LoginPage from "@/components/auth/LoginPage";
 import Dashboard from "@/components/dashboard/Dashboard";
 import CPAPLogin from "@/components/dashboard_CPAP_BiPAP/CPAPLogin";
@@ -87,13 +86,12 @@ export default function App() {
         <Route index element={<DashboardOverview />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="reports" element={<ReportsPage />} />
-        <Route path="reports/:id" element={<ECGRecordDetail />} />
       </Route>
       {/* public login for admin / doctor */}
       <Route path="/login" element={<LoginPage />} />
 
         {/* common dashboard (role-based later) */}
-        <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
 
         {/* CPAP/BiPAP Routes */}
         <Route path="/cpap/login" element={<CPAPLogin />} />
@@ -113,6 +111,6 @@ export default function App() {
         <Route path="/cpap/settings/admin" element={<CPAPSettings />} />
         <Route path="/settings/cpap_machine" element={<CPAPSettings />} />
         <Route path="/settings/admin" element={<CPAPSettings />} />
-      </Routes>
+        </Routes>
   );
 }

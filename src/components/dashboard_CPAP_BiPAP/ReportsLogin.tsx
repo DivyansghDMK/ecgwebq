@@ -2,8 +2,18 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { LayoutDashboard, Phone, Cpu, LogIn, Wind, Calendar, Settings } from "lucide-react";
+
+// Image imports with fallback
 const deckmountLogo = new URL("../../assets/DeckMount Photo.png", import.meta.url).href;
-const reportSideImage = new URL("../../assets/report.jpg", import.meta.url).href;
+const reportImage = new URL("../../assets/report.jpg", import.meta.url).href;
+
+// Try to load doctor illustration, fallback to report image if not found
+let doctorIllustration: string;
+try {
+  doctorIllustration = new URL("../../assets/doctor-illustration.png", import.meta.url).href;
+} catch {
+  doctorIllustration = reportImage;
+}
 
 export default function ReportsLogin() {
   const navigate = useNavigate();
@@ -89,10 +99,17 @@ export default function ReportsLogin() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             <div className={`hidden md:block rounded-2xl overflow-hidden border ${isDarkMode ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
               <img
-                src={reportSideImage}
-                alt="Report illustration"
-                className="w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget.style.display = "none"); }}
+                src={doctorIllustration || reportImage}
+                alt="Doctor illustration - Medical professional with heart health diagram"
+                className="w-full h-full object-contain p-4"
+                onError={(e) => { 
+                  // Fallback to report image if doctor illustration fails to load
+                  if (e.currentTarget.src !== reportImage) {
+                    e.currentTarget.src = reportImage;
+                  } else {
+                    e.currentTarget.style.display = "none";
+                  }
+                }}
               />
             </div>
             <div className="md:col-span-2">
