@@ -37,6 +37,12 @@ export function Navbar() {
               {item.label}
             </a>
           ))}
+          <a
+            href="#login-section"
+            className="text-[0.7rem] font-medium uppercase leading-tight tracking-[0.3em] text-white/70 transition hover:text-white"
+          >
+            Login
+          </a>
         </nav>
         <button
           type="button"
@@ -69,6 +75,16 @@ export function Navbar() {
                   {item.label}
                 </motion.a>
               ))}
+              <motion.a
+                href="#login-section"
+                className={cn(
+                  "block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition",
+                  "hover:bg-white/10 hover:text-white"
+                )}
+                onClick={() => setIsOpen(false)}
+              >
+                Login
+              </motion.a>
               <Link
                 to="mailto:sales@deckmount.com"
                 className="block text-center text-xs uppercase tracking-[0.3em] text-white/60"

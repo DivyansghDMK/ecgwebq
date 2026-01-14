@@ -19,7 +19,7 @@ export default function AdminLayout() {
               localStorage.removeItem("admin_logged_in");
               localStorage.removeItem("role");
               localStorage.removeItem("token");
-              navigate("/artists/login");
+              navigate("/login");
             }}
             className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
           >

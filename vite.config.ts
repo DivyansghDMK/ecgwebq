@@ -14,6 +14,9 @@ export default defineConfig({
       "@lib": path.resolve(__dirname, "./src/lib")
     }
   },
+  optimizeDeps: {
+    exclude: ['jsonwebtoken'] // Exclude jsonwebtoken from optimization since it's not installed
+  },
   server: {
     port: 5173,
     open: true

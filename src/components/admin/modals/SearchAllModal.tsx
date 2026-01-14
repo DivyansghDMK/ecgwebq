@@ -75,3 +75,5 @@ export default function SearchAllModal({ isOpen, onClose }: SearchAllModalProps)
     </Modal>
   );
 }
+
+

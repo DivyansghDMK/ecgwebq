@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="40" viewBox="0 0 240 40">
+  <rect width="240" height="40" fill="transparent"/>
+  <g font-family="Arial Black, Arial, sans-serif" font-weight="900" font-style="italic" font-size="24" fill="#0f172a">
+    <text x="8" y="28" letter-spacing="1">DECK</text>
+    <text x="150" y="28" letter-spacing="1">MOUNT</text>
+  </g>
+  <polygon points="120,6 108,22 120,22 112,36 130,18 118,18" fill="#ffd11a"/>
+</svg>

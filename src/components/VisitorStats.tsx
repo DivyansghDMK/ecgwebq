@@ -19,11 +19,27 @@ export function VisitorStats() {
 
   // Fetch analytics from Vercel API
   const fetchVercelAnalytics = async () => {
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const isDev = typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.DEV;
+    if (isLocal || isDev) {
+      setIsLoading(false);
+      return;
+    }
     try {
       const response = await fetch('/api/analytics');
       if (response.ok) {
-        const data = await response.json();
-        console.log('Analytics data received:', data); // Debug log
+        const ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          throw new Error('Invalid analytics response: not JSON');
+        }
+        const text = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          throw new Error('Invalid analytics response: JSON parse failed');
+        }
+        console.debug('Analytics data received:', data);
         if (data.visitors !== undefined) {
           // Ensure countries array has proper structure with valid percentages
           const countries = Array.isArray(data.countries) 
@@ -56,19 +72,32 @@ export function VisitorStats() {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch Vercel analytics:', error);
+      console.debug('Analytics disabled or unavailable:', error);
     }
 
     // Fallback: Get visitor's country and track locally
     try {
+      if (isLocal) {
+        const storedStats = localStorage.getItem('visitorStats');
+        const visitorStats: VisitorStats = storedStats 
+          ? JSON.parse(storedStats) 
+          : { totalVisitors: 0, countries: [] };
+        setStats(visitorStats);
+        setIsLoading(false);
+        return;
+      }
       let countryName = '';
       try {
         const response = await fetch('https://ipapi.co/json/');
+        const ct = response.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) throw new Error('Invalid ipapi response');
         const data = await response.json();
         countryName = data.country_name || '';
       } catch (e) {
         try {
           const response = await fetch('https://ip-api.com/json/');
+          const ct = response.headers.get('content-type') || '';
+          if (!ct.includes('application/json')) throw new Error('Invalid ip-api response');
           const data = await response.json();
           countryName = data.country || '';
         } catch (e2) {
@@ -143,7 +172,7 @@ export function VisitorStats() {
       setStats(visitorStats);
       setIsLoading(false);
     } catch (error) {
-      console.error('Failed to fetch stats:', error);
+      console.debug('Visitor stats fallback unavailable:', error);
       setIsLoading(false);
     }
   };
@@ -181,7 +210,7 @@ export function VisitorStats() {
           }
         }
       } catch (e) {
-        console.error('Failed to parse stored stats:', e);
+        console.debug('Failed to parse stored stats:', e);
       }
     }
 
@@ -189,11 +218,12 @@ export function VisitorStats() {
     fetchVercelAnalytics();
 
     // Poll for updates every 30 seconds
-    const interval = setInterval(() => {
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const interval = isLocal ? undefined : setInterval(() => {
       fetchVercelAnalytics();
     }, 30000);
 
-    return () => clearInterval(interval);
+    return () => { if (interval) clearInterval(interval); };
   }, []);
 
   return (

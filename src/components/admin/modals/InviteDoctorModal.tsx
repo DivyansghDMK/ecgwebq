@@ -148,3 +148,5 @@ export default function InviteDoctorModal({ isOpen, onClose, onSuccess }: Invite
     </Modal>
   );
 }
+
+
