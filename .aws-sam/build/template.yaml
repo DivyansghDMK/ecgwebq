@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CardioX ECG API - Serverless backend
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        NODE_ENV: production
+        S3_BUCKET: deck-backend-demo
+        AWS_REGION: us-east-1
+Resources:
+  ECGS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: deck-backend-demo
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+        RestrictPublicObjects: false
+  UploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ecg-upload
+      Handler: upload.handler
+      CodeUri: UploadFunction
+      Description: Upload ECG data to S3
+      Policies:
+      - S3CrudPolicy:
+          BucketName:
+            Ref: ECGS3Bucket
+      Environment:
+        Variables:
+          S3_BUCKET:
+            Ref: ECGS3Bucket
+    Metadata:
+      SamResourceId: UploadFunction
+  ReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ecg-reports
+      Handler: reports.handler
+      CodeUri: ReportsFunction
+      Description: List ECG reports from S3
+      Policies:
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ECGS3Bucket
+      Environment:
+        Variables:
+          S3_BUCKET:
+            Ref: ECGS3Bucket
+    Metadata:
+      SamResourceId: ReportsFunction
+  ReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ecg-report
+      Handler: report.handler
+      CodeUri: ReportFunction
+      Description: Get specific ECG report
+      Policies:
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ECGS3Bucket
+      Environment:
+        Variables:
+          S3_BUCKET:
+            Ref: ECGS3Bucket
+    Metadata:
+      SamResourceId: ReportFunction
+  DoctorReportsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ecg-doctor-reports
+      Handler: doctor-reports.handler
+      CodeUri: DoctorReportsFunction
+      Description: List ECG PDF reports for doctors
+      Policies:
+      - S3ReadPolicy:
+          BucketName:
+            Ref: ECGS3Bucket
+      Environment:
+        Variables:
+          S3_BUCKET:
+            Ref: ECGS3Bucket
+    Metadata:
+      SamResourceId: DoctorReportsFunction
+  DoctorUploadReviewedFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ecg-doctor-upload-reviewed
+      Handler: doctor-upload-reviewed.handler
+      CodeUri: DoctorUploadReviewedFunction
+      Description: Upload doctor-reviewed ECG PDF to S3
+      Policies:
+      - S3CrudPolicy:
+          BucketName:
+            Ref: ECGS3Bucket
+      Environment:
+        Variables:
+          S3_BUCKET:
+            Ref: ECGS3Bucket
+    Metadata:
+      SamResourceId: DoctorUploadReviewedFunction
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      DefinitionBody:
+        swagger: '2.0'
+        info:
+          title: CardioX ECG API
+          version: 1.0
+        paths:
+          /api/upload:
+            post:
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UploadFunction.Arn}/invocations
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                type: aws_proxy
+          /api/reports:
+            get:
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ReportsFunction.Arn}/invocations
+                httpMethod: GET
+                passthroughBehavior: when_no_match
+                type: aws_proxy
+          /api/report:
+            get:
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ReportFunction.Arn}/invocations
+                httpMethod: GET
+                passthroughBehavior: when_no_match
+                type: aws_proxy
+          /api/doctor/reports:
+            get:
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DoctorReportsFunction.Arn}/invocations
+                httpMethod: GET
+                passthroughBehavior: when_no_match
+                type: aws_proxy
+          /api/doctor/upload-reviewed:
+            post:
+              x-amazon-apigateway-integration:
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DoctorUploadReviewedFunction.Arn}/invocations
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                type: aws_proxy
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value:
+      Fn::Sub: https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod

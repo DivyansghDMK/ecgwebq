@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100vh;
+  background-color: #090b16;
+  background-image: linear-gradient(
+      rgba(9, 11, 22, 0.92),
+      rgba(9, 11, 22, 0.92)
+    ),
+    url("/assets/login-grid.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.glass-panel {
+  @apply rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-glow;
+}
+
+.section-heading {
+  @apply font-display text-3xl md:text-4xl font-semibold tracking-tight;
+}
+
+.section-subheading {
+  @apply text-base text-white/60 max-w-2xl;
+}
+
+/*admin page - supports dark/light theme */
+
+.admin-root {
+  color-scheme: light;
+  background: #ffffff;
+}
+
+.admin-root.dark {
+  color-scheme: dark;
+  background: #090b16;
+  color: #e5e7eb;
+}
+
+/* Inputs fix - only apply in light mode */
+.admin-root:not(.dark) input,
+.admin-root:not(.dark) textarea,
+.admin-root:not(.dark) select {
+  background-color: #ffffff !important;
+  color: #111 !important;
+  border-color: #d1d5db !important;
+}
+
+.admin-root:not(.dark) input::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Dark mode inputs */
+.admin-root.dark input,
+.admin-root.dark textarea,
+.admin-root.dark select {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-root.dark input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
