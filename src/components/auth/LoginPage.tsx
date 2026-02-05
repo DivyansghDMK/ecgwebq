@@ -5,6 +5,18 @@ import { Shield, Stethoscope, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 type Role = "admin" | "doctor";
 
+// Hardcoded credentials for security
+const HARDCODED_CREDENTIALS = {
+  admin: {
+    username: "admin@cardiox",
+    password: "26!Adm1n#Str0ng"
+  },
+  doctor: {
+    username: "doctor@cardiox", 
+    password: "26!D0ct0r#Str0ng"
+  }
+};
+
 export default function LoginPage() {
   const navigate = useNavigate();
 
@@ -25,18 +37,26 @@ export default function LoginPage() {
       return;
     }
 
-  // TEMP AUTH (backend later)
-  localStorage.setItem("role", role);
-  localStorage.setItem("token", "dummy-token");
+    // Validate against hardcoded credentials only
+    const validCredentials = HARDCODED_CREDENTIALS[role];
+    
+    if (username !== validCredentials.username || password !== validCredentials.password) {
+      alert("Invalid credentials. Access denied.");
+      return;
+    }
 
-  // Redirect based on role
-  if (role === "admin") {
-    localStorage.setItem("admin_logged_in", "true");
-    navigate("/artists");
-  } else if (role === "doctor") {
-    localStorage.setItem("doctor_logged_in", "true");
-    navigate("/doctor");
-  }
+    // Successful authentication
+    localStorage.setItem("role", role);
+    localStorage.setItem("token", "dummy-token");
+
+    // Redirect based on role
+    if (role === "admin") {
+      localStorage.setItem("admin_logged_in", "true");
+      navigate("/artists");
+    } else if (role === "doctor") {
+      localStorage.setItem("doctor_logged_in", "true");
+      navigate("/doctor");
+    }
   };
 
   const loginBoxes = [

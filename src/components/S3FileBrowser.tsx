@@ -5,8 +5,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { fetchS3Files, downloadPDF, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
-import { S3File, S3FilesResponse } from '../../api/types/ecg';
+import { fetchS3Files, fetchS3FileContent, downloadPDF, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
+import { S3File, S3FilesResponse } from '../../backend-api/types/ecg';
 import { Download, Eye, Search, X, FileText, Loader2 } from 'lucide-react';
 
 const S3FileBrowser: React.FC = () => {
@@ -18,6 +18,8 @@ const S3FileBrowser: React.FC = () => {
   const [pagination, setPagination] = useState<S3FilesResponse['pagination'] | null>(null);
   const [selectedFile, setSelectedFile] = useState<S3File | null>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [jsonContent, setJsonContent] = useState<any | null>(null);
+  const [loadingJson, setLoadingJson] = useState<boolean>(false);
 
   // Load files from S3
   const loadFiles = async (page: number = 1, searchQuery: string = '') => {
@@ -53,10 +55,32 @@ const S3FileBrowser: React.FC = () => {
   };
 
   // Handle file preview
-  const handlePreview = (file: S3File) => {
-    if (file.type === 'application/pdf' && file.url) {
-      setSelectedFile(file);
-      setShowPreview(true);
+  const handlePreview = async (file: S3File) => {
+    if (!file.url && !file.key) return;
+
+    setSelectedFile(file);
+    setShowPreview(true);
+    setJsonContent(null);
+
+    // If it's a JSON file, load its content via API to avoid CORS issues
+    if (file.type === 'application/json') {
+      setLoadingJson(true);
+      setError(''); // Clear any previous errors
+      try {
+        // Use the API endpoint instead of direct fetch to avoid CORS issues
+        const jsonData = await fetchS3FileContent(file.key);
+        if (jsonData) {
+          setJsonContent(jsonData);
+        } else {
+          throw new Error('Failed to fetch JSON content');
+        }
+      } catch (err) {
+        const errorMessage = handleApiError(err);
+        setError(`Failed to load JSON content: ${errorMessage}`);
+        console.error('Error loading JSON:', err);
+      } finally {
+        setLoadingJson(false);
+      }
     }
   };
 
@@ -82,6 +106,8 @@ const S3FileBrowser: React.FC = () => {
   const closePreview = () => {
     setShowPreview(false);
     setSelectedFile(null);
+    setJsonContent(null);
+    setError(''); // Clear error when closing preview
   };
 
   return (
@@ -190,7 +216,7 @@ const S3FileBrowser: React.FC = () => {
                         {formatTimestamp(file.lastModified)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        {file.type === 'application/pdf' && file.url && (
+                        {(file.type === 'application/pdf' || file.type === 'application/json') && file.url && (
                           <motion.button
                             onClick={() => handlePreview(file)}
                             whileHover={{ y: -2, scale: 1.05 }}
@@ -304,14 +330,24 @@ const S3FileBrowser: React.FC = () => {
               exit={{ opacity: 0, scale: 0.9 }}
               className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
             >
-              <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                  <div className={`p-2 rounded-lg ${
+                    selectedFile.type === 'application/json' 
+                      ? 'bg-green-100 dark:bg-green-900' 
+                      : 'bg-blue-100 dark:bg-blue-900'
+                  }`}>
+                    <FileText className={`w-5 h-5 ${
+                      selectedFile.type === 'application/json' 
+                        ? 'text-green-600 dark:text-green-300' 
+                        : 'text-blue-600 dark:text-blue-300'
+                    }`} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">{selectedFile.name}</h3>
-                    <p className="text-sm text-slate-600">{formatFileSize(selectedFile.size)} • {formatTimestamp(selectedFile.lastModified)}</p>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-50">{selectedFile.name}</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">
+                      {selectedFile.type === 'application/json' ? 'JSON' : 'PDF'} • {formatFileSize(selectedFile.size)} • {formatTimestamp(selectedFile.lastModified)}
+                    </p>
                   </div>
                 </div>
                 <motion.button
@@ -324,7 +360,30 @@ const S3FileBrowser: React.FC = () => {
                 </motion.button>
               </div>
               <div className="p-6 bg-slate-50">
-                {selectedFile.url ? (
+                {selectedFile.type === 'application/json' ? (
+                  // JSON Preview
+                  loadingJson ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <Loader2 className="animate-spin text-blue-600" size={40} />
+                      <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Loading JSON content...</p>
+                    </div>
+                  ) : jsonContent ? (
+                    <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-900">
+                      <div className="max-h-[600px] overflow-y-auto p-4">
+                        <pre className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words font-mono">
+                          {JSON.stringify(jsonContent, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                      <p className="text-lg font-medium">Failed to load JSON content</p>
+                      <p className="text-sm mt-2">{error || 'Unable to preview this JSON file'}</p>
+                    </div>
+                  )
+                ) : selectedFile.type === 'application/pdf' && selectedFile.url ? (
+                  // PDF Preview
                   <iframe
                     src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(selectedFile.url)}`}
                     className="w-full h-[600px] border-0 rounded-lg shadow-inner bg-white"
