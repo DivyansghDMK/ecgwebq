@@ -105,8 +105,8 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // Generate pre-signed URLs for each file
     const filesWithUrls = await Promise.all(
       paginatedObjects.map(async (obj: S3Object) => {
-        // Extract record ID from key (remove prefix and extension)
-        const recordId = obj.Key ? obj.Key.replace(/^ecg-reports\//, '').replace(/\.(pdf|json)$/, '') : '';
+        // Extract record ID from key (remove both ecg-reports/ and ecg-data/ prefixes and extension)
+        const recordId = obj.Key ? obj.Key.replace(/^(ecg-reports|ecg-data)\//, '').replace(/\.(pdf|json)$/, '') : '';
         
         try {
           // Generate pre-signed URL for PDF files

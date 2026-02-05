@@ -18,6 +18,8 @@ export default function ReportsPage() {
     }
   }, [navigate]);
 
+  type ReportWithUrl = ECGReportMetadata & { pdfUrl?: string | null; jsonUrl?: string | null };
+
   // State management
   const [filters, setFilters] = useState<ReportFilters>({
     name: "",
@@ -27,12 +29,13 @@ export default function ReportsPage() {
     endDate: "",
   });
   
-  const [reports, setReports] = useState<ECGReportMetadata[]>([]);
+  const [reports, setReports] = useState<ReportWithUrl[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedReport, setSelectedReport] = useState<ECGReportMetadata | null>(null);
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportWithUrl | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [jsonContent, setJsonContent] = useState<any | null>(null);
+  const [loadingJson, setLoadingJson] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
 
@@ -41,7 +44,6 @@ export default function ReportsPage() {
     setLoading(true);
     setError(null);
     setSelectedReport(null);
-    setPdfBlob(null);
     setPdfPreviewUrl(null);
 
     try {
@@ -84,18 +86,44 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
 };
 
   // Handle report selection
-  const handleReportSelect = async (report: ECGReportMetadata) => {
+  const handleReportSelect = async (report: ReportWithUrl) => {
     setSelectedReport(report);
-    setPdfBlob(null);
-    setPdfPreviewUrl(null);
+    setPdfPreviewUrl(report.pdfUrl || null);
+    setGeneratingPDF(false);
+    setJsonContent(null);
+    
+    // If it's a JSON file, load its content from the presigned URL (jsonUrl)
+    if (report.type === 'JSON' && report.jsonUrl) {
+      setLoadingJson(true);
+      try {
+        const response = await fetch(report.jsonUrl);
+        if (!response.ok) {
+          throw new Error('Failed to fetch JSON content');
+        }
+        const jsonData = await response.json();
+        setJsonContent(jsonData);
+        // Also update the report's ecg field if it wasn't already loaded
+        if (!report.ecg) {
+          report.ecg = jsonData;
+        }
+      } catch (err) {
+        console.error('Failed to load JSON content:', err);
+      } finally {
+        setLoadingJson(false);
+      }
+    } else if (report.ecg) {
+      // If ECG data is already in the report, use it
+      setJsonContent(report.ecg);
+    }
   };
 
   // Handle PDF download
   const handleDownloadPDF = () => {
-    if (pdfPreviewUrl && selectedReport) {
+    if (selectedReport?.pdfUrl) {
       const link = document.createElement('a');
-      link.href = pdfPreviewUrl;
-      link.download = `ECG_Report_${selectedReport.name || 'report'}_${new Date().toISOString().split('T')[0]}.html`;
+      link.href = selectedReport.pdfUrl;
+      link.download = `ECG_Report_${selectedReport.name || 'report'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -104,75 +132,10 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
 
   // Handle PDF preview (separate from download)
   const handlePreviewPDF = () => {
-    // Preview is already handled by the useEffect when selectedReport changes
-    // This function can be used for manual refresh if needed
-    if (selectedReport) {
-      setGeneratingPDF(true);
-      setPdfBlob(null);
-      setPdfPreviewUrl(null);
-      
-      setTimeout(() => {
-        const pdfContent = `
-          <html>
-            <head><title>ECG Report</title></head>
-            <body>
-              <h1>ECG Report</h1>
-              <p><strong>Name:</strong> ${selectedReport.name || selectedReport.patient?.name || 'N/A'}</p>
-              <p><strong>Phone:</strong> ${selectedReport.patient?.phone || selectedReport.phoneNumber || 'N/A'}</p>
-              <p><strong>Device ID:</strong> ${selectedReport.deviceId || 'N/A'}</p>
-              <p><strong>Date:</strong> ${selectedReport.timestamp || selectedReport.date || 'N/A'}</p>
-              <hr>
-              <div>${selectedReport.ecg ? JSON.stringify(selectedReport.ecg, null, 2) : 'No ECG data available'}</div>
-            </body>
-          </html>
-        `;
-        
-        const blob = new Blob([pdfContent], { type: 'text/html' });
-        setPdfBlob(blob);
-        setPdfPreviewUrl(URL.createObjectURL(blob));
-        setGeneratingPDF(false);
-      }, 1000);
+    if (selectedReport?.pdfUrl) {
+      setPdfPreviewUrl(selectedReport.pdfUrl);
     }
   };
-
-useEffect(() => {
-  if (selectedReport) {
-    setGeneratingPDF(true);
-    setPdfBlob(null);
-    setPdfPreviewUrl(null);
-    
-    // Generate PDF directly from report data
-    const generatePDF = async () => {
-      try {
-        // Create a simple PDF preview URL from the report data
-        const pdfContent = `
-          <html>
-            <head><title>ECG Report</title></head>
-            <body>
-              <h1>ECG Report</h1>
-              <p><strong>Name:</strong> ${selectedReport.name || selectedReport.patient?.name || 'N/A'}</p>
-              <p><strong>Phone:</strong> ${selectedReport.patient?.phone || selectedReport.phoneNumber || 'N/A'}</p>
-              <p><strong>Device ID:</strong> ${selectedReport.deviceId || 'N/A'}</p>
-              <p><strong>Date:</strong> ${selectedReport.timestamp || selectedReport.date || 'N/A'}</p>
-              <hr>
-              <div>${selectedReport.ecg ? JSON.stringify(selectedReport.ecg, null, 2) : 'No ECG data available'}</div>
-            </body>
-          </html>
-        `;
-        
-        const blob = new Blob([pdfContent], { type: 'text/html' });
-        setPdfBlob(blob);
-        setPdfPreviewUrl(URL.createObjectURL(blob));
-      } catch (err: any) {
-        setError(err.message || "Failed to generate PDF. Please try again.");
-      } finally {
-        setGeneratingPDF(false);
-      }
-    };
-    
-    generatePDF();
-  }
-}, [selectedReport]);
   // Clear filters
   const handleClearFilters = () => {
     setFilters({
@@ -595,38 +558,65 @@ useEffect(() => {
             )}
           </div>
 
-        {/* PDF Preview Card */}
+        {/* File Preview Card */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
           <div className="flex items-center gap-2 mb-6">
             <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
               <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
             </div>
-            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">PDF Preview</h3>
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
+              {selectedReport?.type === 'JSON' ? 'JSON Preview' : 'PDF Preview'}
+            </h3>
           </div>
 
-          {generatingPDF ? (
-            <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-              <Loader2 className="animate-spin text-emerald-600" size={40} />
-              <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Generating PDF...</p>
-            </div>
-          ) : pdfPreviewUrl ? (
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
-              <iframe
-                src={pdfPreviewUrl}
-                className="w-full h-[400px]"
-                title="PDF Preview"
-              />
-            </div>
+          {selectedReport?.type === 'JSON' ? (
+            // JSON Preview
+            loadingJson ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <Loader2 className="animate-spin text-emerald-600" size={40} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Loading JSON content...</p>
+              </div>
+            ) : jsonContent ? (
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                <div className="max-h-[400px] overflow-y-auto p-4">
+                  <pre className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words font-mono">
+                    {JSON.stringify(jsonContent, null, 2)}
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <FileText className="text-slate-300 dark:text-slate-600" size={48} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">
+                  {selectedReport ? "JSON content will appear here" : "Select a report to preview"}
+                </p>
+              </div>
+            )
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
-              <FileText className="text-slate-300 dark:text-slate-600" size={48} />
-              <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">
-                {selectedReport ? "PDF will appear here after generation" : "Select a report to preview"}
-              </p>
-            </div>
-          )
-          }
-          {pdfPreviewUrl && (
+            // PDF Preview
+            generatingPDF ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <Loader2 className="animate-spin text-emerald-600" size={40} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Loading PDF preview...</p>
+              </div>
+            ) : pdfPreviewUrl ? (
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                <iframe
+                  src={pdfPreviewUrl}
+                  className="w-full h-[400px] border-0 bg-white"
+                  title="PDF Preview"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <FileText className="text-slate-300 dark:text-slate-600" size={48} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">
+                  {selectedReport ? "PDF will appear here after generation" : "Select a report to preview"}
+                </p>
+              </div>
+            )
+          )}
+          {pdfPreviewUrl && selectedReport?.type !== 'JSON' && (
             <div className="flex gap-3 mt-4">
               <motion.button
                 onClick={handlePreviewPDF}

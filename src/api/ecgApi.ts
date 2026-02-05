@@ -2,15 +2,16 @@
  * Frontend API Client for ECG Services
  */
 
-import { 
+import type { 
   ECGUploadPayload, 
   ReportUrlsResponse,
   ReportsResponse,
   UploadResponse,
   ReportFilters,
   S3FilesResponse,
-  ECGReportMetadata
-} from '../../api/types/ecg';
+  ECGReportMetadata,
+  S3File,
+} from '../../backend-api/types/ecg';
 import { mockReports, filterReports } from './mockData';
 
 // API Bases
@@ -88,14 +89,33 @@ export async function fetchReports(filters?: ReportFilters): Promise<ReportsResp
   console.log('Fetching S3 files with filters:', filters);
   
   try {
+    // First, fetch canonical metadata from /reports to get real patient names / phone / deviceId
+    let metaReports: ECGReportMetadata[] = [];
+    try {
+      const metaParams = new URLSearchParams();
+      if (filters?.name) metaParams.append('name', filters.name);
+      if (filters?.phone) metaParams.append('phone', filters.phone);
+      if (filters?.deviceId) metaParams.append('deviceId', filters.deviceId);
+      if (filters?.startDate) metaParams.append('startDate', filters.startDate);
+      if (filters?.endDate) metaParams.append('endDate', filters.endDate);
+      const metaQuery = metaParams.toString();
+
+      const metaResponse = await apiRequest<ReportsResponse>(
+        `/reports${metaQuery ? `?${metaQuery}` : ''}`
+      );
+      metaReports = (metaResponse as any).data || [];
+    } catch (metaError) {
+      console.warn('[fetchReports] Failed to load metadata from /reports, falling back to filename parsing only:', metaError);
+    }
+
     // Fetch S3 files
-    const s3Data = await fetchS3Files(1, 20, ''); // Reduced to avoid Lambda timeout
+    const s3Data: S3FilesResponse = await fetchS3Files(1, 20, ''); // Reduced to avoid Lambda timeout
     console.log('S3 files received:', s3Data.files.length);
     
     // Group files by their "folder" or timestamp to find related files
     const fileGroups = new Map<string, typeof s3Data.files>();
     
-    s3Data.files.forEach(file => {
+    s3Data.files.forEach((file: S3File) => {
       const fullPath = file.fullPath || file.key || '';
       const pathParts = fullPath.split('/');
       
@@ -114,7 +134,7 @@ export async function fetchReports(filters?: ReportFilters): Promise<ReportsResp
     console.log('File groups created:', fileGroups.size);
     
     // Process each group to create reports with patient data extracted from filenames
-    const reports: ECGReportMetadata[] = [];
+    const reports: (ECGReportMetadata & { pdfUrl?: string | null })[] = [];
     
     for (const [timestamp, files] of fileGroups) {
       console.log(`Processing group ${timestamp} with ${files.length} files`);
@@ -195,9 +215,9 @@ export async function fetchReports(filters?: ReportFilters): Promise<ReportsResp
       }
       
       // Create report objects for each PDF in this group
-      const pdfFiles = allFiles.filter(f => f.type === 'application/pdf');
+      const pdfFiles = allFiles.filter((f: S3File) => f.type === 'application/pdf');
       for (const pdfFile of pdfFiles) {
-        const report: ECGReportMetadata = {
+        const report: ECGReportMetadata & { pdfUrl?: string | null } = {
           recordId: pdfFile.key || pdfFile.recordId || '',
           deviceId: extractedPatientData?.deviceId || 'unknown',
           patient: {
@@ -215,56 +235,110 @@ export async function fetchReports(filters?: ReportFilters): Promise<ReportsResp
           phoneNumber: extractedPatientData?.phone || undefined,
           date: pdfFile.lastModified,
           type: 'PDF',
-          ecg: null
+          ecg: null,
+          pdfUrl: pdfFile.url ?? null,
         };
         
         console.log('Created PDF report:', report);
         reports.push(report);
       }
       
+      // Helper function to extract patient data from JSON content
+      const extractPatientFromJson = async (jsonFile: S3File): Promise<{ name?: string; phone?: string; deviceId?: string; ecg?: any } | null> => {
+        if (!jsonFile.url) return null;
+        
+        try {
+          const response = await fetch(jsonFile.url);
+          if (!response.ok) return null;
+          
+          const jsonData = await response.json();
+          
+          // Extract patient info from various possible JSON structures
+          const patientName = jsonData?.patient?.name || 
+                            jsonData?.name || 
+                            jsonData?.patientName ||
+                            (jsonData?.patient?.id ? undefined : null);
+          
+          const phone = jsonData?.patient?.phone || 
+                       jsonData?.phone || 
+                       jsonData?.phoneNumber;
+          
+          const deviceId = jsonData?.deviceId || 
+                          jsonData?.device?.id ||
+                          jsonData?.deviceId;
+          
+          return {
+            name: patientName || undefined,
+            phone: phone || undefined,
+            deviceId: deviceId || undefined,
+            ecg: jsonData // Store full ECG data for later use
+          };
+        } catch (err) {
+          console.warn(`Failed to load JSON content from ${jsonFile.url}:`, err);
+          return null;
+        }
+      };
+      
       // Create reports for user_signup files (these are the primary patient records)
-      const userSignupFiles = allFiles.filter(f => f.name.includes('user_signup_'));
+      const userSignupFiles = allFiles.filter((f: S3File) => f.name.includes('user_signup_'));
       for (const userFile of userSignupFiles) {
         const match = userFile.name.match(/user_signup_([a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)_\d{8}_\d{6}\.json/i);
-        if (match && match[1]) {
-          const patientName = match[1].replace(/[-_]/g, ' ').trim();
-          
-          const report: ECGReportMetadata = {
-            recordId: userFile.key || userFile.recordId || '',
-            deviceId: 'unknown',
-            patient: {
-              id: userFile.key || userFile.recordId || '',
-              name: patientName,
-              phone: undefined
-            },
-            timestamp: userFile.lastModified,
-            createdAt: userFile.lastModified,
-            fileSize: userFile.size,
-            hasPdf: false,
-            // Compatibility fields
+        let patientName = match && match[1] ? match[1].replace(/[-_]/g, ' ').trim() : 'Unknown Patient';
+        let patientPhone: string | undefined = undefined;
+        let ecgData: any = null;
+        
+        // Try to load actual JSON content to get real patient data
+        const jsonData = await extractPatientFromJson(userFile);
+        if (jsonData) {
+          if (jsonData.name) patientName = jsonData.name;
+          if (jsonData.phone) patientPhone = jsonData.phone;
+          if (jsonData.ecg) ecgData = jsonData.ecg;
+        }
+        
+        const report: ECGReportMetadata & { jsonUrl?: string | null; pdfUrl?: string | null } = {
+          recordId: userFile.key || userFile.recordId || '',
+          deviceId: jsonData?.deviceId || 'unknown',
+          patient: {
             id: userFile.key || userFile.recordId || '',
             name: patientName,
-            phoneNumber: undefined,
-            date: userFile.lastModified,
-            type: 'JSON',
-            ecg: null
-          };
-          
-          console.log('Created user signup report:', report);
-          reports.push(report);
-        }
+            phone: patientPhone
+          },
+          timestamp: userFile.lastModified,
+          createdAt: userFile.lastModified,
+          fileSize: userFile.size,
+          hasPdf: false,
+          // Compatibility fields
+          id: userFile.key || userFile.recordId || '',
+          name: patientName,
+          phoneNumber: patientPhone,
+          date: userFile.lastModified,
+          type: 'JSON',
+          ecg: ecgData,
+          jsonUrl: userFile.url ?? null
+        };
+        
+        console.log('Created user signup report:', report);
+        reports.push(report);
       }
       
       // Create reports for other JSON files with extracted patient data
-      const otherJsonFiles = allFiles.filter(f => f.type === 'application/json' && !f.name.includes('user_signup_'));
+      const otherJsonFiles = allFiles.filter((f: S3File) => f.type === 'application/json' && !f.name.includes('user_signup_'));
       for (const jsonFile of otherJsonFiles) {
-        const report: ECGReportMetadata = {
+        // Try to extract patient data from JSON content first
+        let jsonData = await extractPatientFromJson(jsonFile);
+        
+        // Fallback to extracted patient data from filename if JSON load failed
+        const finalPatientName = jsonData?.name || extractedPatientData?.name || 'Unknown Patient';
+        const finalPhone = jsonData?.phone || extractedPatientData?.phone;
+        const finalDeviceId = jsonData?.deviceId || extractedPatientData?.deviceId || 'unknown';
+        
+        const report: ECGReportMetadata & { jsonUrl?: string | null; pdfUrl?: string | null } = {
           recordId: jsonFile.key || jsonFile.recordId || '',
-          deviceId: extractedPatientData?.deviceId || 'unknown',
+          deviceId: finalDeviceId,
           patient: {
             id: jsonFile.key || jsonFile.recordId || '',
-            name: extractedPatientData?.name || 'Unknown Patient',
-            phone: extractedPatientData?.phone || undefined
+            name: finalPatientName,
+            phone: finalPhone
           },
           timestamp: jsonFile.lastModified,
           createdAt: jsonFile.lastModified,
@@ -272,11 +346,12 @@ export async function fetchReports(filters?: ReportFilters): Promise<ReportsResp
           hasPdf: false,
           // Compatibility fields
           id: jsonFile.key || jsonFile.recordId || '',
-          name: extractedPatientData?.name || 'Unknown Patient',
-          phoneNumber: extractedPatientData?.phone || undefined,
+          name: finalPatientName,
+          phoneNumber: finalPhone,
           date: jsonFile.lastModified,
           type: 'JSON',
-          ecg: null
+          ecg: jsonData?.ecg || null,
+          jsonUrl: jsonFile.url ?? null
         };
         
         console.log('Created other JSON report:', report);
@@ -284,6 +359,26 @@ export async function fetchReports(filters?: ReportFilters): Promise<ReportsResp
       }
     }
     
+    // Merge canonical metadata (patient name/phone/deviceId) from /reports where available
+    if (metaReports.length > 0) {
+      const metaByRecordId = new Map<string, ECGReportMetadata>();
+      metaReports.forEach((m) => {
+        if (m.recordId) {
+          metaByRecordId.set(m.recordId, m);
+        }
+      });
+
+      reports.forEach((r: any) => {
+        const meta = metaByRecordId.get(r.recordId);
+        if (meta) {
+          r.patient = meta.patient;
+          r.deviceId = meta.deviceId || r.deviceId;
+          r.name = meta.patient?.name || r.name;
+          r.phoneNumber = meta.patient?.phone || r.phoneNumber;
+        }
+      });
+    }
+
     console.log('Total reports created:', reports.length);
     
     // Apply filters if provided
