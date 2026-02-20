@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { fetchS3FileContent } from "@/api/ecgApi";
 
 /**
  * Creates a reviewed PDF by loading the original from URL, adding
@@ -18,11 +19,36 @@ export async function createReviewedPdf(
   const { comments, doctorId, signatureFile, signatureDataUrl } = options;
 
   // Fetch original PDF
-  const res = await fetch(originalPdfUrl);
-  if (!res.ok) {
-    throw new Error("Failed to download original PDF");
+  // Try to use our proxy first to avoid CORS issues
+  let originalArrayBuffer: ArrayBuffer;
+  
+  try {
+    // Extract key from URL
+    // Format: https://bucket.s3.../key
+    const urlObj = new URL(originalPdfUrl);
+    const key = decodeURIComponent(urlObj.pathname.substring(1)); // Remove leading /
+
+    // Fetch via proxy (returns base64 for PDFs)
+    const base64Data = await fetchS3FileContent<string>(key);
+    
+    // Convert base64 to ArrayBuffer
+    const binaryString = atob(base64Data);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    originalArrayBuffer = bytes.buffer;
+
+  } catch (proxyError) {
+    console.warn("Proxy fetch failed, falling back to direct fetch:", proxyError);
+    // Fallback to direct fetch
+    const res = await fetch(originalPdfUrl);
+    if (!res.ok) {
+      throw new Error("Failed to download original PDF");
+    }
+    originalArrayBuffer = await res.arrayBuffer();
   }
-  const originalArrayBuffer = await res.arrayBuffer();
 
   const pdfDoc = await PDFDocument.load(originalArrayBuffer);
   const pages = pdfDoc.getPages();

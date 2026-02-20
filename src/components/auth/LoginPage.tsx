@@ -9,8 +9,8 @@ type Role = "admin" | "doctor";
 
 // Admin credentials from environment variables
 const ADMIN_CREDENTIALS = {
-  username: import.meta.env.VITE_ADMIN_USERNAME,
-  password: import.meta.env.VITE_ADMIN_PASSWORD
+  username: import.meta.env.VITE_ADMIN_USERNAME || "admin@cardiox",
+  password: import.meta.env.VITE_ADMIN_PASSWORD || "26!Adm1n#Str0ng"
 };
 
 export default function LoginPage() {

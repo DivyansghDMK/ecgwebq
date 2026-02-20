@@ -58,63 +58,97 @@ export const handler = withErrorHandler(
     if (!boundaryMatch) {
       return badRequest("Invalid multipart boundary");
     }
-    const boundary = "--" + boundaryMatch[1];
-
+    
+    // 1. Get the raw body buffer
     const bodyBuffer = event.isBase64Encoded
       ? Buffer.from(event.body, "base64")
       : Buffer.from(event.body, "utf8");
 
-    const parts = bodyBuffer
-      .toString("binary")
-      .split(boundary)
-      .filter((part) => part.includes("Content-Disposition"));
+    // 2. Define the boundary marker (e.g., --boundary)
+    const boundary = boundaryMatch[1];
+    const boundaryMarker = Buffer.from(`--${boundary}`);
 
     let originalFileName = "";
     let doctorId = "";
     let pdfBuffer: Buffer | null = null;
 
-    for (const part of parts) {
-      const [rawHeaders, rawContent] = part.split("\r\n\r\n");
-      if (!rawContent) continue;
+    // 3. Robust Buffer-based parsing
+    let currentPos = bodyBuffer.indexOf(boundaryMarker);
+    if (currentPos === -1) {
+        return badRequest("No multipart parts found");
+    }
+    
+    // Move past the first boundary
+    currentPos += boundaryMarker.length;
 
-      const headersLines = rawHeaders.split("\r\n").filter(Boolean);
-      const dispositionLine =
-        headersLines.find((h) =>
-          h.toLowerCase().startsWith("content-disposition")
-        ) || "";
+    while (true) {
+        // Find the next boundary
+        const nextBoundary = bodyBuffer.indexOf(boundaryMarker, currentPos);
+        if (nextBoundary === -1) break;
 
-      const nameMatch = /name="([^"]+)"/i.exec(dispositionLine);
-      const filenameMatch = /filename="([^"]+)"/i.exec(dispositionLine);
-      const fieldName = nameMatch?.[1];
+        // Extract the chunk between boundaries
+        // Typically: \r\n(Headers)\r\n\r\n(Body)\r\n
+        let chunk = bodyBuffer.subarray(currentPos, nextBoundary);
+        
+        // Update currentPos for next iteration
+        currentPos = nextBoundary + boundaryMarker.length;
 
-      // Trim trailing boundary markers/newlines
-      const cleaned = rawContent.replace(/\r\n--$/g, "");
-
-      if (filenameMatch && fieldName === "reviewedPdf") {
-        // File content
-        pdfBuffer = Buffer.from(cleaned, "binary");
-        if (!originalFileName) {
-          originalFileName = filenameMatch[1];
+        // Remove leading CRLF if present
+        if (chunk.length >= 2 && chunk[0] === 13 && chunk[1] === 10) {
+            chunk = chunk.subarray(2);
         }
-      } else if (fieldName === "originalFileName") {
-        originalFileName = cleaned.trim();
-      } else if (fieldName === "doctorId") {
-        doctorId = cleaned.trim();
-      }
+        
+        // Remove trailing CRLF if present
+        if (chunk.length >= 2 && chunk[chunk.length - 2] === 13 && chunk[chunk.length - 1] === 10) {
+            chunk = chunk.subarray(0, chunk.length - 2);
+        }
+
+        // Find the separator between headers and body
+        const sep = Buffer.from("\r\n\r\n");
+        const sepIndex = chunk.indexOf(sep);
+        
+        if (sepIndex === -1) continue; // Malformed part
+
+        const headersRaw = chunk.subarray(0, sepIndex).toString("utf8");
+        const content = chunk.subarray(sepIndex + 4);
+
+        // Parse headers to find Content-Disposition
+        const headersLines = headersRaw.split("\r\n");
+        const dispositionLine = headersLines.find(h => h.toLowerCase().startsWith("content-disposition")) || "";
+        
+        const nameMatch = /name="([^"]+)"/i.exec(dispositionLine);
+        const filenameMatch = /filename="([^"]+)"/i.exec(dispositionLine);
+        
+        const fieldName = nameMatch?.[1];
+
+        if (filenameMatch && fieldName === "reviewedPdf") {
+             // It's the file
+             pdfBuffer = content;
+             if (!originalFileName) {
+                 originalFileName = filenameMatch[1];
+             }
+        } else if (fieldName === "originalFileName") {
+             originalFileName = content.toString("utf8").trim();
+        } else if (fieldName === "doctorId") {
+             doctorId = content.toString("utf8").trim();
+        }
     }
 
     if (!pdfBuffer) {
-      return badRequest("Missing reviewedPdf file");
+      return badRequest("No reviewedPdf file uploaded");
     }
     if (!originalFileName) {
-      return badRequest("Missing originalFileName field");
+      return badRequest("originalFileName is required");
     }
     if (!doctorId) {
-      return badRequest("Missing doctorId field");
+      return badRequest("doctorId is required");
     }
 
-    const baseName = originalFileName.replace(/^.*[\\/]/, "").replace(/\.pdf$/i, "");
-    const uploadResult = await uploadReviewedPDF(baseName, pdfBuffer, doctorId);
+    const uploadResult = await uploadReviewedPDF(
+      originalFileName,
+      pdfBuffer,
+      doctorId
+    );
 
     return createSuccessResponse(
       {

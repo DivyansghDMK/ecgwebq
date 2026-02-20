@@ -83,9 +83,30 @@ export const handler = async (
     });
 
     const response = await s3Client.send(command);
-    const content = await response.Body?.transformToString();
+    
+    // Check if we should return as base64 (for binary files like PDF)
+    const contentType = response.ContentType || '';
+    const isBinary = decodedKey.toLowerCase().endsWith('.pdf') || 
+                     contentType.includes('pdf') || 
+                     contentType.includes('image') ||
+                     contentType.includes('octet-stream');
 
-    if (!content) {
+    let content: any;
+    if (isBinary) {
+      content = await response.Body?.transformToString('base64');
+    } else {
+      content = await response.Body?.transformToString();
+      // Try to parse JSON if it looks like JSON
+      try {
+        if (content && (content.startsWith('{') || content.startsWith('['))) {
+           content = JSON.parse(content);
+        }
+      } catch (e) {
+        // Keep as string if parsing fails
+      }
+    }
+
+    if (content === undefined || content === null) {
       return {
         statusCode: 404,
         headers,

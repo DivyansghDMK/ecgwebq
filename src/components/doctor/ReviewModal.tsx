@@ -4,6 +4,7 @@ import { X, FileText, UploadCloud, Send, Pen, AlertCircle, RefreshCcw } from "lu
 import { createReviewedPdf } from "@/utils/pdfProcessor";
 import { uploadReviewedReport } from "@/api/ecgApi";
 import { SignatureCanvas } from "./SignatureCanvas";
+import { useNotification } from "@/contexts/NotificationContext";
 
 export interface DoctorReport {
   key: string;
@@ -17,7 +18,7 @@ interface ReviewModalProps {
   open: boolean;
   report: DoctorReport | null;
   onClose: () => void;
-  onSubmitted?: () => void;
+  onSubmitted?: (reviewedReport: DoctorReport) => void;
 }
 
 export const ReviewModal: React.FC<ReviewModalProps> = ({
@@ -33,9 +34,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const [signatureMode, setSignatureMode] = useState<"upload" | "draw">("draw");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(true);
+  const { showNotification } = useNotification();
 
   const resetState = () => {
     setComments("");
@@ -45,7 +46,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     setSignatureMode("draw");
     setSubmitting(false);
     setError(null);
-    setSuccess(null);
     setPdfLoadError(null);
     setIsLoadingPdf(true);
   };
@@ -59,6 +59,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       setPdfLoadError(null);
     }
   }, [report?.url]);
+
+  // Load saved Doctor ID from localStorage on mount
+  useEffect(() => {
+    const savedDoctorId = localStorage.getItem("ecg_doctor_id");
+    if (savedDoctorId) {
+      setDoctorId(savedDoctorId);
+    }
+  }, []);
 
   const handleClose = () => {
     if (submitting) return;
@@ -74,7 +82,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     }
     setSubmitting(true);
     setError(null);
-    setSuccess(null);
 
     try {
       const reviewedBlob = await createReviewedPdf(report.url, {
@@ -96,8 +103,19 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
       await uploadReviewedReport(formData);
 
-      setSuccess("Reviewed PDF uploaded successfully.");
-      if (onSubmitted) onSubmitted();
+      // Save Doctor ID to localStorage for future use
+      localStorage.setItem("ecg_doctor_id", doctorId.trim());
+
+      // Show success toast notification
+      showNotification("Report reviewed successfully.", "success");
+
+      // Trigger parent callback for instant UI update
+      if (onSubmitted) onSubmitted(report);
+
+      // Auto-close modal after successful submission
+      setTimeout(() => {
+        handleClose();
+      }, 500); // Small delay to allow toast to appear
     } catch (err: any) {
       console.error("Failed to upload reviewed report", err);
       setError(err?.message || "Failed to upload reviewed report. Please try again.");
@@ -285,11 +303,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 {error && (
                   <p className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
                     {error}
-                  </p>
-                )}
-                {success && (
-                  <p className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs text-emerald-700">
-                    {success}
                   </p>
                 )}
 

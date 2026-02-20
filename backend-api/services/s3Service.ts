@@ -58,7 +58,8 @@ function buildS3Key(recordId: string, extension: string): string {
  */
 async function findFileInS3(recordId: string, extension: string): Promise<string | null> {
   // Determine the prefix based on file type
-  const prefix = extension === 'json' ? 'ecg-data/' : S3_CONFIG.PREFIX;
+  // Both JSON and PDF are stored in ecg-reports/ (S3_CONFIG.PREFIX) based on uploadECGRecord
+  const prefix = S3_CONFIG.PREFIX;
   
   // First, try the date extracted from recordId
   const dateFolder = getDateFolderFromRecordId(recordId);
@@ -199,7 +200,7 @@ export async function listECGObjects(): Promise<S3ObjectMetadata[]> {
       }
 
       const response = await s3Client.send(command);
-
+      
       if (response.Contents) {
         const objects = response.Contents.map((obj: any) => ({
           Key: obj.Key!,
@@ -209,26 +210,39 @@ export async function listECGObjects(): Promise<S3ObjectMetadata[]> {
         }));
         allObjects = allObjects.concat(objects);
       }
-
+      
       continuationToken = response.NextContinuationToken;
+      
     } while (continuationToken);
 
     return allObjects;
 
   } catch (error) {
     console.error('S3 list error:', error);
-    throw new Error(`Failed to list S3 objects: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(`Failed to list ECG objects from S3: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
 /**
  * Retrieves JSON content for a specific record
  */
-export async function getECGRecord(recordId: string): Promise<ECGRecord> {
+export async function getECGRecord(recordId: string, knownKey?: string): Promise<ECGRecord> {
   try {
+    let key: string | null | undefined = knownKey;
+
+    if (!key) {
+      // Try to find the file if key is not provided
+      key = await findFileInS3(recordId, 'json');
+    }
+
+    if (!key) {
+      // Fallback to legacy flat structure
+      key = `${S3_CONFIG.PREFIX}${recordId}.json`;
+    }
+
     const command = new GetObjectCommand({
       Bucket: S3_CONFIG.BUCKET_NAME,
-      Key: `${S3_CONFIG.PREFIX}${recordId}.json`
+      Key: key
     });
 
     const response = await s3Client.send(command);
@@ -441,18 +455,46 @@ export async function getObjectMetadata(key: string): Promise<{ size: number; la
 
 /**
  * Batch retrieves multiple ECG records
+ * Optimized for concurrent execution to prevent timeouts
  */
-export async function batchGetECGRecords(recordIds: string[]): Promise<ECGRecord[]> {
+export async function batchGetECGRecords(items: { id: string; key?: string }[]): Promise<ECGRecord[]> {
   const records: ECGRecord[] = [];
   const errors: string[] = [];
+  
+  // Limit concurrency to prevent hitting limits or memory issues
+  const CONCURRENCY_LIMIT = 20;
+  
+  // Helper to process a batch of items
+  const processBatch = async (batch: { id: string; key?: string }[]) => {
+    return Promise.all(
+      batch.map(async (item) => {
+        try {
+          const record = await getECGRecord(item.id, item.key);
+          
+          // Optimization: Strip heavy data (pdfBase64) to save memory
+          // We only need metadata for listing reports
+          if (record.pdfBase64) {
+            record.pdfBase64 = "";
+          }
+          
+          return record;
+        } catch (error) {
+          errors.push(`Failed to retrieve record ${item.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          return null;
+        }
+      })
+    );
+  };
 
-  for (const recordId of recordIds) {
-    try {
-      const record = await getECGRecord(recordId);
-      records.push(record);
-    } catch (error) {
-      errors.push(`Failed to retrieve record ${recordId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+  // Process items in chunks
+  for (let i = 0; i < items.length; i += CONCURRENCY_LIMIT) {
+    const chunk = items.slice(i, i + CONCURRENCY_LIMIT);
+    const chunkResults = await processBatch(chunk);
+    
+    // Filter out nulls (failed items) and add to results
+    chunkResults.forEach(result => {
+      if (result) records.push(result);
+    });
   }
 
   if (errors.length > 0) {

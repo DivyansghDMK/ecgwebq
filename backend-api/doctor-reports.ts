@@ -1,11 +1,13 @@
 /**
  * API Handler: GET /api/doctor/reports
  * Lists PDF ECG reports for doctors with presigned URLs.
+ * Updated to use doctor-assigned-reports/{doctorId}/ folder structure.
  */
 
 import { APIGatewayEvent, APIGatewayResponse } from "./types/ecg";
 import { listECGObjects, generatePresignedUrlFromKey, checkObjectExists } from "./services/s3Service";
 import { createSuccessResponse, withErrorHandler } from "./utils/response";
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 interface DoctorReportSummary {
   key: string;
@@ -14,6 +16,12 @@ interface DoctorReportSummary {
   uploadedAt?: string; // ISO timestamp
   lastModified?: string; // Keep for backward compatibility
 }
+
+// Create S3 client for direct ListObjectsV2Command usage
+const s3Client = new S3Client({
+  region: 'us-east-1',
+  // Add any additional configuration as needed
+});
 
 export const handler = withErrorHandler(
   async (event: any): Promise<APIGatewayResponse> => {
@@ -31,14 +39,59 @@ export const handler = withErrorHandler(
       return createSuccessResponse({ message: "Method not allowed" }, 405);
     }
 
-    const objects = await listECGObjects();
+    // Extract doctorId from query parameters
+    const doctorId = event.queryStringParameters?.doctorId || event.queryParameters?.doctorId;
+    
+    if (!doctorId) {
+      return createSuccessResponse(
+        {
+          success: false,
+          message: "doctorId query parameter is required",
+          reports: []
+        },
+        400
+      );
+    }
 
-    // Only include PDF files from the main ECG prefix
-    const pdfObjects = objects.filter(
+    // Build the S3 prefix for doctor-assigned reports
+    const prefix = `doctor-assigned-reports/${doctorId}/`;
+
+    // Use ListObjectsV2Command directly with the doctor-specific prefix
+    const command = new ListObjectsV2Command({
+      Bucket: 'deck-backend-demo',
+      Prefix: prefix,
+      MaxKeys: 1000
+    });
+
+    let allObjects: any[] = [];
+    let continuationToken: string | undefined;
+
+    do {
+      if (continuationToken) {
+        command.input.ContinuationToken = continuationToken;
+      }
+
+      const response = await s3Client.send(command);
+      
+      if (response.Contents) {
+        const objects = response.Contents.map((obj: any) => ({
+          Key: obj.Key!,
+          Size: obj.Size,
+          LastModified: obj.LastModified?.toISOString(),
+          ETag: obj.ETag
+        }));
+        allObjects = allObjects.concat(objects);
+      }
+      
+      continuationToken = response.NextContinuationToken;
+      
+    } while (continuationToken);
+
+    // Only include PDF files
+    const pdfObjects = allObjects.filter(
       (obj) =>
         obj.Key &&
-        obj.Key.endsWith(".pdf") &&
-        !obj.Key.startsWith("reports/reviewed/")
+        obj.Key.endsWith(".pdf")
     );
 
     const reports: DoctorReportSummary[] = [];

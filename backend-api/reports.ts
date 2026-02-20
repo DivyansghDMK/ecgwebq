@@ -107,35 +107,30 @@ export const handler = withErrorHandler(async (event: APIGatewayEvent) => {
     // List all objects in S3
     const objects = await listECGObjects();
     
-    // Filter only JSON files
+    // Filter JSON and PDF files
     const jsonObjects = objects.filter(obj => obj.Key && obj.Key.endsWith('.json'));
-    
-    if (jsonObjects.length === 0) {
-      const response: ReportsResponse = {
-        success: true,
-        data: [],
-        metadata: {
-          total: 0,
-          filtered: 0
-        }
-      };
-      return createSuccessResponse(response);
-    }
+    const pdfObjects = objects.filter(obj => obj.Key && obj.Key.endsWith('.pdf'));
 
-    // Extract record IDs from JSON object keys
-    const recordIds = jsonObjects
+    // Extract record IDs and keys from JSON object keys
+    const recordItems = jsonObjects
       .map(obj => {
         const key = obj.Key!;
         const filename = key.split('/').pop() || '';
-        return filename.replace('.json', '');
+        return {
+          id: filename.replace('.json', ''),
+          key: key
+        };
       })
-      .filter(recordId => recordId.length > 0);
+      .filter(item => item.id.length > 0);
 
     // Batch fetch all ECG records
-    const records = await batchGetECGRecords(recordIds);
+    const records = await batchGetECGRecords(recordItems);
+
+    // Create set of IDs that have JSON records (to identify orphan PDFs)
+    const jsonRecordIds = new Set(records.map(r => r.recordId));
 
     // Transform records to metadata format
-    const reports: ECGReportMetadata[] = records.map(record => {
+    const jsonReports: ECGReportMetadata[] = records.map(record => {
       const jsonKey = `${record.recordId}.json`;
       const pdfKey = `${record.recordId}.pdf`;
       
@@ -152,11 +147,43 @@ export const handler = withErrorHandler(async (event: APIGatewayEvent) => {
           phone: record.patient.phone|| ""
         },
         timestamp: record.timestamp,
-      createdAt: record.timestamp || new Date().toISOString(),
+        createdAt: record.timestamp || new Date().toISOString(),
         fileSize: jsonObj?.Size,
         hasPdf: !!pdfObj
       };
     });
+
+    // Identify and create metadata for orphan PDFs (PDFs with no JSON record)
+    const orphanPdfReports: ECGReportMetadata[] = pdfObjects
+      .filter(obj => {
+        const key = obj.Key!;
+        const filename = key.split('/').pop() || '';
+        const id = filename.replace('.pdf', '');
+        // Check if this ID was already processed (exists in JSON records)
+        return !jsonRecordIds.has(id);
+      })
+      .map(obj => {
+        const key = obj.Key!;
+        const filename = key.split('/').pop() || '';
+        const id = filename.replace('.pdf', '');
+        
+        return {
+            recordId: id,
+            deviceId: "unknown",
+            patient: {
+                id: id,
+                name: "Unknown (PDF Only)",
+                phone: ""
+            },
+            timestamp: obj.LastModified ? new Date(obj.LastModified).toISOString() : new Date().toISOString(),
+            createdAt: obj.LastModified ? new Date(obj.LastModified).toISOString() : new Date().toISOString(),
+            fileSize: obj.Size,
+            hasPdf: true
+        };
+      });
+
+    // Combine both lists
+    const reports = [...jsonReports, ...orphanPdfReports];
 
     // Apply filters
     const filteredReports = filterReports(reports, filters);

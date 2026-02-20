@@ -81,6 +81,26 @@ export interface ReportFilters {
   endDate?: string;
 }
 
+export interface CreateDoctorPayload {
+  name: string;
+  email: string;
+  specialization: string;
+  hospital?: string;
+  licenseNumber?: string;
+}
+
+export interface Doctor {
+  doctorId: string;
+  name: string;
+  email: string;
+  specialization: string;
+  hospital?: string;
+  licenseNumber?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface S3ObjectMetadata {
   Key: string;
   Size?: number;
@@ -131,6 +151,9 @@ export interface ReportsResponse {
   metadata: {
     total: number;
     filtered?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
   };
 }
 

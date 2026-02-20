@@ -90,14 +90,14 @@ export default function DashboardOverview() {
         
         // Fetch reports and S3 files in parallel
         const [reportsResponse, s3Files] = await Promise.all([
-          fetchReports().catch(() => ({ reports: [], total: 0 })),
+          fetchReports().catch(() => ({ success: false, data: [], metadata: { total: 0, filtered: 0 } })),
           fetchAllS3Files().catch(() => [])
         ]);
         
         // Calculate stats from real data
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
-        const reports = reportsResponse.reports || [];
+        const reports = reportsResponse.data || [];
         
         // Count all ECG report files from S3 (PDFs and JSONs that are reports, not user signups)
         const ecgReportFiles = s3Files.filter((file: any) => {
@@ -248,29 +248,6 @@ export default function DashboardOverview() {
     }
   };
 
-  const handleExportData = () => {
-    if (window.confirm("Do you want to export all data to CSV?")) {
-      // Simulate export
-      const csvContent = "data:text/csv;charset=utf-8,User,Email,Phone\nJohn Doe,john@example.com,1234567890";
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "cardiox_export.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      alert("Data exported successfully!");
-    }
-  };
-
-  const handleShowNotifications = () => {
-    alert("Notifications panel would open here. (To be implemented)");
-  };
-
-  const handleShowAnalytics = () => {
-    alert("Analytics page would open here. (To be implemented)");
-  };
-
   const kpiCards = [
     {
       title: "Total Users",
@@ -387,33 +364,6 @@ export default function DashboardOverview() {
       borderColor: "border-amber-200/50",
     },
     {
-      label: "Notifications",
-      icon: Bell,
-      onClick: handleShowNotifications,
-      iconBg: "bg-yellow-100",
-      iconColor: "text-yellow-500",
-      hoverBg: "hover:bg-yellow-50",
-      borderColor: "border-yellow-200/50",
-    },
-    {
-      label: "Analytics",
-      icon: BarChart3,
-      onClick: handleShowAnalytics,
-      iconBg: "bg-indigo-100",
-      iconColor: "text-indigo-500",
-      hoverBg: "hover:bg-indigo-50",
-      borderColor: "border-indigo-200/50",
-    },
-    {
-      label: "Export Data",
-      icon: Download,
-      onClick: handleExportData,
-      iconBg: "bg-teal-100",
-      iconColor: "text-teal-500",
-      hoverBg: "hover:bg-teal-50",
-      borderColor: "border-teal-200/50",
-    },
-    {
       label: "Search All",
       icon: Search,
       onClick: () => setShowSearchModal(true),
@@ -489,7 +439,7 @@ export default function DashboardOverview() {
             </div>
             <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-5 gap-3">
             {quickActions.map((action, index) => (
               <motion.button
                 key={action.label}
@@ -499,14 +449,14 @@ export default function DashboardOverview() {
                 whileHover={{ y: -2, scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={action.onClick}
-                className={`group flex flex-col items-center justify-center p-4 border rounded-lg hover:border-opacity-70 hover:shadow-sm hover:shadow-orange-500/20 transition-all duration-200 backdrop-blur-sm ${
+                className={`group flex flex-col items-center justify-center p-3 border rounded-lg hover:border-opacity-70 hover:shadow-sm hover:shadow-orange-500/20 transition-all duration-200 backdrop-blur-sm ${
                   isDarkMode 
                     ? 'border-white/10 bg-white/5 hover:bg-white/10' 
                     : `${action.borderColor} ${action.hoverBg} bg-white/80`
                 }`}
               >
-                <div className={`p-2.5 rounded-lg mb-2.5 ${isDarkMode ? 'bg-white/10 border border-white/10' : action.iconBg}`}>
-                  <action.icon className={`w-5 h-5 ${isDarkMode ? 'text-orange-500' : action.iconColor}`} />
+                <div className={`p-2 rounded-lg mb-2 ${isDarkMode ? 'bg-white/10 border border-white/10' : action.iconBg}`}>
+                  <action.icon className={`w-4 h-4 ${isDarkMode ? 'text-orange-500' : action.iconColor}`} />
                 </div>
                 <span className={`text-xs font-medium text-center ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   {action.label}
