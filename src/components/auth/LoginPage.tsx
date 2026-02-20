@@ -2,23 +2,20 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Shield, Stethoscope, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useNotification } from "../../contexts/NotificationContext";
+import { doctorLogin } from "../../api/ecgApi";
 
 type Role = "admin" | "doctor";
 
-// Hardcoded credentials for security
-const HARDCODED_CREDENTIALS = {
-  admin: {
-    username: "admin@cardiox",
-    password: "26!Adm1n#Str0ng"
-  },
-  doctor: {
-    username: "doctor@cardiox", 
-    password: "26!D0ct0r#Str0ng"
-  }
+// Admin credentials from environment variables
+const ADMIN_CREDENTIALS = {
+  username: import.meta.env.VITE_ADMIN_USERNAME,
+  password: import.meta.env.VITE_ADMIN_PASSWORD
 };
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
 
   const [adminCredentials, setAdminCredentials] = useState({
     username: "",
@@ -31,31 +28,46 @@ export default function LoginPage() {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showDoctorPassword, setShowDoctorPassword] = useState(false);
 
-  const handleLogin = (role: Role, username: string, password: string) => {
+  const handleLogin = async (role: Role, username: string, password: string) => {
     if (!username || !password) {
-      alert("Please enter username and password");
+      showNotification("Please enter username and password", "warning");
       return;
     }
 
-    // Validate against hardcoded credentials only
-    const validCredentials = HARDCODED_CREDENTIALS[role];
-    
-    if (username !== validCredentials.username || password !== validCredentials.password) {
-      alert("Invalid credentials. Access denied.");
-      return;
-    }
-
-    // Successful authentication
-    localStorage.setItem("role", role);
-    localStorage.setItem("token", "dummy-token");
-
-    // Redirect based on role
+    // Admin login - use hardcoded credentials
     if (role === "admin") {
+      if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
+        showNotification("Invalid credentials. Access denied.", "error");
+        return;
+      }
+
+      // Successful admin authentication
+      localStorage.setItem("role", "admin");
+      localStorage.setItem("token", "admin-token");
       localStorage.setItem("admin_logged_in", "true");
       navigate("/artists");
-    } else if (role === "doctor") {
-      localStorage.setItem("doctor_logged_in", "true");
-      navigate("/doctor");
+      return;
+    }
+
+    // Doctor login - use backend API
+    try {
+      const data = await doctorLogin(username, password);
+
+      if (data.success) {
+        // Successful doctor authentication
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("role", "doctor");
+        localStorage.setItem("doctor_logged_in", "true");
+        localStorage.setItem("doctor_info", JSON.stringify(data.doctor));
+        localStorage.setItem("ecg_doctor_name", data.doctor.doctor_name);
+        navigate("/doctor");
+      } else {
+        // Handle authentication errors
+        showNotification(data.message || "Login failed. Please try again.", "error");
+      }
+    } catch (error: any) {
+      console.error("Doctor login error:", error);
+      showNotification(error.message || "Login failed. Please try again.", "error");
     }
   };
 
