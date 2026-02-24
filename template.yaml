@@ -97,20 +97,6 @@ Resources:
         Variables:
           S3_BUCKET: !Ref ECGS3Bucket
 
-  S3FileContentFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: ecg-s3-file-content
-      Handler: s3-file-content.handler
-      CodeUri: backend-api/
-      Description: 'Fetch S3 file content for preview'
-      Policies:
-        - S3CrudPolicy:
-            BucketName: !Ref ECGS3Bucket
-      Environment:
-        Variables:
-          S3_BUCKET: !Ref ECGS3Bucket
-
   # API Gateway
   ApiGateway:
     Type: AWS::Serverless::Api
@@ -155,13 +141,6 @@ Resources:
               x-amazon-apigateway-integration:
                 uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DoctorUploadReviewedFunction.Arn}/invocations
                 httpMethod: POST
-                passthroughBehavior: when_no_match
-                type: aws_proxy
-          /api/s3-file-content:
-            get:
-              x-amazon-apigateway-integration:
-                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${S3FileContentFunction.Arn}/invocations
-                httpMethod: GET
                 passthroughBehavior: when_no_match
                 type: aws_proxy
 

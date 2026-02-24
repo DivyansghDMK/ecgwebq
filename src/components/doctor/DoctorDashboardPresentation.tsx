@@ -26,9 +26,11 @@ import {
   BarChart3,
   Search,
   Filter,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import doctorImage from '../../assets/doctor.jpg';
+import { fetchDoctorReports, DoctorReportSummary } from '../../api/ecgApi';
 
 interface DoctorProfile {
   name: string;
@@ -89,6 +91,9 @@ const DoctorDashboardPresentation: React.FC = () => {
     phoneNumber: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  
+  
+
   
   // Get current date
   const currentDate = new Date();
@@ -280,7 +285,7 @@ const DoctorDashboardPresentation: React.FC = () => {
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="hidden lg:block w-64 bg-slate-900/90 backdrop-blur-sm border-r border-white/10 min-h-screen"
+          className="hidden lg:flex lg:flex-col w-64 bg-slate-900/90 backdrop-blur-sm border-r border-white/10 h-screen sticky top-0"
         >
           <div className="p-6 border-b border-white/10 sticky top-0 bg-slate-900/90 backdrop-blur-sm">
             <div className="flex items-center gap-3 mb-4">

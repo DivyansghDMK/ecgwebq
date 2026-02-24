@@ -13,6 +13,8 @@ import { SupportSection } from "@/sections/SupportSection";
 import { CtaSection } from "@/sections/CtaSection";
 import { LoginSection } from "@/sections/LoginSection";
 import { Footer } from "@/components/Footer";
+import NotificationContainer from "@/components/common/NotificationContainer";
+import { NotificationProvider } from "@/contexts/NotificationContext";
  
 import { CardmiaChatbot } from "@/components/CardmiaChatbot";
 import { Routes, Route } from "react-router-dom";
@@ -56,21 +58,22 @@ function ScrollToHash() {
 
 export default function App() {
   return (
-    <Routes>
-      {/*normal url */}
-      <Route
-        path="/"
-        element={
-          <>
-            <Navbar />
-            <main className="flex flex-col gap-6">
-              <ScrollToHash />
-              <Hero />
-              <ExperienceGallery />
-              <ProductOverview />
-              <Features />
-              <DashboardShowcase />
-              <ControlPanel />
+    <NotificationProvider>
+      <Routes>
+        {/*normal url */}
+        <Route
+          path="/"
+          element={
+            <>
+              <Navbar />
+              <main className="flex flex-col gap-6">
+                <ScrollToHash />
+                <Hero />
+                <ExperienceGallery />
+                <ProductOverview />
+                <Features />
+                <DashboardShowcase />
+                <ControlPanel />
               <AnalysisSection />
               <AdminSection />
               <SupportSection />
@@ -119,6 +122,8 @@ export default function App() {
         <Route path="/cpap/settings/admin" element={<CPAPSettings />} />
         <Route path="/settings/cpap_machine" element={<CPAPSettings />} />
         <Route path="/settings/admin" element={<CPAPSettings />} />
-        </Routes>
+      </Routes>
+      <NotificationContainer />
+    </NotificationProvider>
   );
 }

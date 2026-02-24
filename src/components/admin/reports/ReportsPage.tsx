@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Filter, Download, FileText, Loader2, AlertCircle, X, Eye, EyeOff, Phone } from "lucide-react";
-import { fetchReports } from "../../../api/ecgApi";
+import { fetchReports, fetchReport } from "../../../api/ecgApi";
 import { downloadPDF, createPDFPreviewURL, generatePDFfromElement } from "../../../utils/pdfGenerator";
-import type { ECGReportMetadata, ReportFilters } from "../../../../api/types/ecg";
+import type { ECGReportMetadata, ReportFilters } from '../../../../backend-api/types/ecg';
 export default function ReportsPage() {
   const navigate = useNavigate();
   
@@ -18,7 +18,11 @@ export default function ReportsPage() {
     }
   }, [navigate]);
 
-  type ReportWithUrl = ECGReportMetadata & { pdfUrl?: string | null; jsonUrl?: string | null };
+  type ReportWithUrl = ECGReportMetadata & { 
+    pdfUrl?: string | null; 
+    jsonUrl?: string | null; 
+    patientName?: string;
+  };
 
   // State management
   const [filters, setFilters] = useState<ReportFilters>({
@@ -38,20 +42,26 @@ export default function ReportsPage() {
   const [loadingJson, setLoadingJson] = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalReports, setTotalReports] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const reportsPerPage = 20;
 
   // Fetch reports function
-  const handleSearch = async () => {
+  const handleSearch = async (page: number = 1) => {
     setLoading(true);
     setError(null);
     setSelectedReport(null);
     setPdfPreviewUrl(null);
 
     try {
-      console.log('Fetching reports with filters:', filters);
-      const response = await fetchReports(filters);
-      console.log('API response:', response);
+      const response = await fetchReports(filters, page, reportsPerPage);
       setReports(response.data || []);
-      console.log('Reports set:', response.data || []);
+      setTotalReports(response.metadata?.total || 0);
+      setTotalPages(response.metadata?.totalPages || 0);
+      setCurrentPage(page);
       
       // Only show error if no reports found and user was actually searching
       const hasSearchFilters = Object.values(filters).some(value => value && typeof value === 'string' && value.trim() !== '');
@@ -66,6 +76,11 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    handleSearch(page);
   };
 
   // Handle numeric-only input (for phone number and device ID)
@@ -88,32 +103,58 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
   // Handle report selection
   const handleReportSelect = async (report: ReportWithUrl) => {
     setSelectedReport(report);
-    setPdfPreviewUrl(report.pdfUrl || null);
+    setPdfPreviewUrl(null); // Reset while loading
     setGeneratingPDF(false);
     setJsonContent(null);
     
+    let currentReport = report;
+
+    // If URLs are missing (lazy loaded), fetch them now
+    if (!currentReport.pdfUrl && !currentReport.jsonUrl) {
+      try {
+        const urlResponse = await fetchReport(report.id || '');
+        if (urlResponse.success && urlResponse.data) {
+          currentReport = {
+            ...report,
+            pdfUrl: urlResponse.data.pdfUrl,
+            jsonUrl: urlResponse.data.jsonUrl
+          };
+          
+          // Update selected report with new URLs
+          setSelectedReport(currentReport);
+          
+          // Update the report in the list to cache the URLs
+          setReports(prev => prev.map(r => r.id === report.id ? currentReport : r));
+        }
+      } catch (err) {
+        // Continue with original report, maybe it works or shows error later
+      }
+    }
+    
+    setPdfPreviewUrl(currentReport.pdfUrl || null);
+    
     // If it's a JSON file, load its content from the presigned URL (jsonUrl)
-    if (report.type === 'JSON' && report.jsonUrl) {
+    if (currentReport.type === 'JSON' && currentReport.jsonUrl) {
       setLoadingJson(true);
       try {
-        const response = await fetch(report.jsonUrl);
+        const response = await fetch(currentReport.jsonUrl);
         if (!response.ok) {
           throw new Error('Failed to fetch JSON content');
         }
         const jsonData = await response.json();
         setJsonContent(jsonData);
         // Also update the report's ecg field if it wasn't already loaded
-        if (!report.ecg) {
-          report.ecg = jsonData;
+        if (!currentReport.ecg) {
+          currentReport.ecg = jsonData;
         }
       } catch (err) {
-        console.error('Failed to load JSON content:', err);
+        // Failed to load JSON content
       } finally {
         setLoadingJson(false);
       }
-    } else if (report.ecg) {
+    } else if (currentReport.ecg) {
       // If ECG data is already in the report, use it
-      setJsonContent(report.ecg);
+      setJsonContent(currentReport.ecg);
     }
   };
 
@@ -145,9 +186,9 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
       startDate: "",
       endDate: "",
     });
+    setCurrentPage(1);
     setReports([]);
     setSelectedReport(null);
-    setPdfBlob(null);
     setPdfPreviewUrl(null);
     setError(null);
   };
@@ -209,7 +250,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
   <span className="text-sm font-medium">{showFilters ? "Hide" : "Show"} Filters</span>
 </motion.button>
             <motion.button
-  onClick={handleSearch}
+  onClick={() => handleSearch(1)}
   disabled={loading}
   whileHover={{ y: -2, scale: 1.02 }}
   whileTap={{ scale: 0.98 }}
@@ -395,7 +436,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
               <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Reports</h3>
             </div>
             <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-full">
-              {reports.length}
+              {totalReports}
             </span>
           </div>
 
@@ -425,11 +466,11 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                 <div
                   key={report.id}
                   onClick={() => handleReportSelect(report)}
-                  className={`grid grid-cols-5 border-t border-slate-200 cursor-pointer transition-colors ${
-                    selectedReport?.id === report.id ? "bg-emerald-50" : "odd:bg-white even:bg-slate-50 hover:bg-slate-100"
+                  className={`grid grid-cols-5 border-t border-slate-200 dark:border-slate-700 cursor-pointer transition-colors ${
+                    selectedReport?.id === report.id ? "bg-emerald-50 dark:bg-emerald-900/30" : "odd:bg-white dark:bg-slate-900 even:bg-slate-50 dark:even:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
-                  <div className="p-3 text-slate-900 dark:text-slate-50 font-medium">{report.name || report.patient?.name || "Unnamed Report"}</div>
+                  <div className="p-3 text-slate-900 dark:text-slate-50 font-medium">{report.patientName || report.name || report.patient?.name || "Unnamed Report"}</div>
                   <div className="p-3 text-slate-700 dark:text-slate-200 border-x border-slate-200 dark:border-slate-700">{report.patient?.phone || report.phoneNumber || "N/A"}</div>
                   <div className="p-3 text-slate-700 dark:text-slate-200">{report.deviceId || "N/A"}</div>
                   <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{formatDate(report.timestamp || report.date || "")}</div>
@@ -439,6 +480,63 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
             )}
             </div>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((currentPage - 1) * reportsPerPage) + 1}</span> to{' '}
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                      {Math.min(currentPage * reportsPerPage, totalReports)}
+                    </span>{' '}
+                    of <span className="font-bold text-slate-900 dark:text-slate-100">{totalReports}</span> results
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7 7M15 5l-7-7 7 7" />
+                    </svg>
+                    Previous
+                  </button>
+                  
+                  {/* Page Numbers */}
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                          page === currentPage
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
+                            : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                  >
+                    Next
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 
@@ -470,8 +568,8 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-700 dark:text-gray-200">Org: {selectedReport.ecg?.org || '-'}</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-200">Phone No: {selectedReport.ecg?.phone || selectedReport.phoneNumber || '-'}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">Org: {selectedReport.ecg?.org || '-'}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">Phone No: {selectedReport.ecg?.phone || selectedReport.phoneNumber || '-'}</p>
                     </div>
                     <h4 className="text-2xl font-bold text-gray-900 dark:text-slate-50">ECG Report</h4>
                     <div className="w-28" />
@@ -481,20 +579,20 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                     <div className="grid grid-cols-4 gap-0">
                       <div className="col-span-2 border-r border-gray-300 p-3">
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Name:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.patient?.name || selectedReport.name}</div>
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Age:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.patient?.age ?? '-'}</div>
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Gender:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.patient?.gender ?? '-'}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Name:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.patient?.name || selectedReport.name}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Age:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.patient?.age ?? '-'}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Gender:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.patient?.gender ?? '-'}</div>
                         </div>
                       </div>
                       <div className="col-span-2 p-3">
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Date:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.datetime?.date || formatDate(selectedReport.timestamp || selectedReport.date || "").split(',')[0]}</div>
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Time:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.datetime?.time || formatDate(selectedReport.timestamp || selectedReport.date || "").split(',')[1]?.trim() || '-'}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Date:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.datetime?.date || formatDate(selectedReport.timestamp || selectedReport.date || "").split(',')[0]}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Time:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.datetime?.time || formatDate(selectedReport.timestamp || selectedReport.date || "").split(',')[1]?.trim() || '-'}</div>
                         </div>
                       </div>
                     </div>
@@ -505,16 +603,16 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                     <div className="mt-2 border border-gray-300 rounded-md">
                       <div className="grid grid-cols-3">
                         <div className="border-r border-gray-300 p-3">
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Maximum Heart Rate:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.overview?.maxHR ?? '-'}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Maximum Heart Rate:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.overview?.maxHR ?? '-'}</div>
                         </div>
                         <div className="border-r border-gray-300 p-3">
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Minimum Heart Rate:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.overview?.minHR ?? '-'}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Minimum Heart Rate:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.overview?.minHR ?? '-'}</div>
                         </div>
                         <div className="p-3">
-                          <div className="font-semibold text-gray-800 dark:text-gray-100">Average Heart Rate:</div>
-                          <div className="text-gray-700 dark:text-gray-200">{selectedReport.ecg?.overview?.avgHR ?? '-'}</div>
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">Average Heart Rate:</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.overview?.avgHR ?? '-'}</div>
                         </div>
                       </div>
                     </div>
@@ -524,15 +622,15 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                     <h4 className="italic font-semibold text-gray-900 dark:text-slate-50">OBSERVATION</h4>
                     <div className="mt-2 border border-gray-300 rounded-md">
                       <div className="grid grid-cols-3 bg-gray-100 border-b border-gray-300">
-                        <div className="p-2 font-semibold text-gray-800 dark:text-gray-100">Interval Names</div>
-                        <div className="p-2 font-semibold text-gray-800 dark:text-gray-100 border-x border-gray-300">Observed Values</div>
-                        <div className="p-2 font-semibold text-gray-800 dark:text-gray-100">Standard Range</div>
+                        <div className="p-2 font-semibold text-slate-800 dark:text-slate-200">Interval Names</div>
+                        <div className="p-2 font-semibold text-slate-800 dark:text-slate-200 border-x border-gray-300">Observed Values</div>
+                        <div className="p-2 font-semibold text-slate-800 dark:text-slate-200">Standard Range</div>
                       </div>
                       {(selectedReport.ecg?.observation || []).map((row: any, i: number) => (
                         <div key={i} className="grid grid-cols-3 border-t border-gray-300">
-                          <div className="p-2 text-gray-700 dark:text-gray-200">{row.name}</div>
-                          <div className="p-2 text-gray-700 dark:text-gray-200 border-x border-gray-300">{row.value}</div>
-                          <div className="p-2 text-gray-700 dark:text-gray-200">{row.range}</div>
+                          <div className="p-2 text-slate-700 dark:text-slate-300">{row.name}</div>
+                          <div className="p-2 text-slate-700 dark:text-slate-300 border-x border-gray-300">{row.value}</div>
+                          <div className="p-2 text-slate-700 dark:text-slate-300">{row.range}</div>
                         </div>
                       ))}
                     </div>
@@ -542,13 +640,13 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                     <h4 className="italic font-semibold text-gray-900 dark:text-slate-50">ECG Report Conclusion</h4>
                     <div className="mt-2 border border-gray-300 rounded-md">
                       <div className="grid grid-cols-12 bg-gray-100 dark:bg-slate-800 border-b border-gray-300">
-                        <div className="col-span-2 p-2 font-semibold text-gray-800 dark:text-gray-100">S.No.</div>
-                        <div className="col-span-10 p-2 font-semibold text-gray-800 dark:text-gray-100">Conclusion</div>
+                        <div className="col-span-2 p-2 font-semibold text-slate-800 dark:text-slate-200">S.No.</div>
+                        <div className="col-span-10 p-2 font-semibold text-slate-800 dark:text-slate-200">Conclusion</div>
                       </div>
                       {(selectedReport.ecg?.conclusions || []).map((text: string, idx: number) => (
                         <div key={idx} className="grid grid-cols-12 border-t border-gray-300">
-                          <div className="col-span-2 p-2 text-gray-700 dark:text-gray-200">{idx + 1}</div>
-                          <div className="col-span-10 p-2 text-gray-700 dark:text-gray-200">{text}</div>
+                          <div className="col-span-2 p-2 text-slate-700 dark:text-slate-300">{idx + 1}</div>
+                          <div className="col-span-10 p-2 text-slate-700 dark:text-slate-300">{text}</div>
                         </div>
                       ))}
                     </div>

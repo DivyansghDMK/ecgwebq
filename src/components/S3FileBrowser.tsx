@@ -28,7 +28,7 @@ const S3FileBrowser: React.FC = () => {
     
     try {
       const data = await fetchS3Files(page, 20, searchQuery);
-      setFiles(data.files);
+      setFiles(data.files || []);
       setPagination(data.pagination);
       setCurrentPage(page);
     } catch (err) {
@@ -171,7 +171,7 @@ const S3FileBrowser: React.FC = () => {
         )}
 
         {/* Files Table */}
-        {!loading && files.length > 0 && (
+        {!loading && files?.length > 0 && (
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
@@ -247,63 +247,56 @@ const S3FileBrowser: React.FC = () => {
 
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
-              <div className="bg-gray-50 dark:bg-slate-800 px-6 py-3 flex items-center justify-between border-t border-gray-200 dark:border-slate-700">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={!pagination.hasPrev}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={!pagination.hasNext}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      Showing <span className="font-medium">{((currentPage - 1) * pagination.limit) + 1}</span> to{' '}
-                      <span className="font-medium">
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                      Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((currentPage - 1) * pagination.limit) + 1}</span> to{' '}
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
                         {Math.min(currentPage * pagination.limit, pagination.total)}
                       </span>{' '}
-                      of <span className="font-medium">{pagination.total}</span> results
+                      of <span className="font-bold text-slate-900 dark:text-slate-100">{pagination.total}</span> results
                     </p>
                   </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                      <button
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={!pagination.hasPrev}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Previous
-                      </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={!pagination.hasPrev}
+                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7 7M15 5l-7-7 7 7" />
+                      </svg>
+                      Previous
+                    </button>
+                  
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
                       {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
                         <button
                           key={page}
                           onClick={() => handlePageChange(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                          className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                             page === currentPage
-                              ? 'z-10 bg-blue-50 dark:bg-blue-900/40 border-blue-500 text-blue-600 dark:text-blue-300'
-                              : 'bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600 text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800'
+                              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
+                              : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
                           }`}
                         >
                           {page}
                         </button>
                       ))}
-                      <button
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={!pagination.hasNext}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Next
-                      </button>
-                    </nav>
+                    </div>
+                  
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={!pagination.hasNext}
+                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                    >
+                      Next
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7 7" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>

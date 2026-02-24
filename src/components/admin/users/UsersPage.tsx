@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, X, User as UserIcon, Phone, Hash, Trash2, UserPlus } from "lucide-react";
+import { Search, Filter, X, User as UserIcon, Phone, Hash, Trash2, UserPlus, Clock } from "lucide-react";
 import { useDebounce } from "../../../hooks/useDebounce";
 import { fetchReports } from "../../../services/reportsApi";
 import { fetchS3Files } from "../../../api/ecgApi";
@@ -31,29 +31,31 @@ export default function UsersPage() {
     phoneNumber: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const usersPerPage = 10;
 
   // Fetch ALL files from S3 by paginating through all pages
   const fetchAllS3Files = async (): Promise<any[]> => {
     const allFiles: any[] = [];
-    let currentPage = 1;
+    let s3Page = 1;
     let hasMore = true;
     const limit = 20; // Reduced to avoid Lambda timeout
 
     while (hasMore) {
       try {
-        const response = await fetchS3Files(currentPage, limit, '');
+        const response = await fetchS3Files(s3Page, limit, '');
         allFiles.push(...response.files);
         
         hasMore = response.pagination.hasNext;
-        currentPage++;
+        s3Page++;
         
         // Safety limit to prevent infinite loops
-        if (currentPage > 100) {
+        if (s3Page > 100) {
           console.warn('[UsersPage] Reached safety limit of 100 pages');
           break;
         }
       } catch (error) {
-        console.error(`[UsersPage] Error fetching page ${currentPage}:`, error);
+        console.error(`[UsersPage] Error fetching page ${s3Page}:`, error);
         hasMore = false;
       }
     }
@@ -332,6 +334,20 @@ export default function UsersPage() {
     return result;
   }, [debouncedSearch, debouncedFilters, users]);
 
+  // Pagination
+  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+
+  // Reset to page 1 only when filters are actively applied
+  useEffect(() => {
+    const hasActiveFilters = debouncedSearch.trim() || debouncedFilters.serialId.trim() || debouncedFilters.username.trim() || debouncedFilters.phoneNumber.trim();
+    if (hasActiveFilters && currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearch, debouncedFilters.serialId, debouncedFilters.username, debouncedFilters.phoneNumber]);
+
   // Handle filter input changes
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters(prev => ({
@@ -609,9 +625,9 @@ export default function UsersPage() {
                 <span className="text-xs font-bold text-white">ACTIVE</span>
               </div>
             </div>
-            <p className="text-white/90 text-sm font-medium mb-2">Total Users</p>
-            <h2 className="text-4xl font-bold text-white mb-1">{filteredUsers.length}</h2>
-            <p className="text-white/80 text-xs mt-2">Currently displayed</p>
+            <p className="text-white/90 text-sm font-medium mb-2">Current Page Users</p>
+            <h2 className="text-4xl font-bold text-white mb-1">{currentUsers.length}</h2>
+            <p className="text-white/80 text-xs mt-2">Page {currentPage} of {totalPages} ({filteredUsers.length} total)</p>
           </div>
         </motion.div>
 
@@ -642,13 +658,13 @@ export default function UsersPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Users Table */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* Users Table - Takes 3/4 of space */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.3 }}
-          className="lg:col-span-2 bg-white rounded-2xl border-2 border-gray-200 shadow-xl overflow-hidden"
+          className="xl:col-span-3 bg-white rounded-2xl border-2 border-gray-200 shadow-xl overflow-hidden"
         >
           <div className="bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 px-6 py-5 shadow-lg">
             <div className="flex items-center justify-between">
@@ -658,7 +674,7 @@ export default function UsersPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">Users List</h3>
-                  <p className="text-xs text-white/80 mt-0.5">All registered users from S3</p>
+                  <p className="text-xs text-white/80 mt-0.5">Page {currentPage} of {totalPages} ({filteredUsers.length} total users)</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg">
@@ -678,53 +694,65 @@ export default function UsersPage() {
               <p className="text-sm text-gray-500 mt-2">Extracting user data from files and reports</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <>
+              <table className="w-full border-collapse table-fixed">
                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Record ID</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Username</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Full Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Phone</th>
+                    <th className="w-[25%] px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Record ID</th>
+                    <th className="w-[20%] px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Username</th>
+                    <th className="w-[25%] px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Full Name</th>
+                    <th className="w-[15%] px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">Phone</th>
+                    <th className="w-[15%] px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-3 h-3" />
+                        Created At
+                      </div>
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {filteredUsers.map((user, index) => (
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {currentUsers.map((user, index) => (
                     <motion.tr
                       key={user.recordId}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.35 + index * 0.02 }}
                       onClick={() => setSelectedUser(user)}
-                      className={`cursor-pointer transition-all duration-200 group ${
+                      className={`cursor-pointer transition-all duration-200 group border-b ${
                         selectedUser?.recordId === user.recordId
                           ? "bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-500 shadow-md"
                           : "hover:bg-gradient-to-r hover:from-gray-50 hover:to-orange-50/30 hover:shadow-sm"
                       }`}
                     >
-                      <td className="px-6 py-4">
-                        <span className="font-medium text-orange-600 font-mono text-xs bg-orange-50 px-2 py-1 rounded-md">{user.recordId ? user.recordId.substring(0, 20) + '...' : '—'}</span>
+                      <td className="w-[25%] px-6 py-4 border-r border-gray-100">
+                        <span className="font-medium text-orange-600 font-mono text-xs bg-orange-50 px-2 py-1 rounded-md block break-all">{user.recordId || '—'}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-900 font-medium">{user.username}</span>
+                      <td className="w-[20%] px-6 py-4 border-r border-gray-100">
+                        <span className="text-gray-900 font-medium block break-all">{user.username}</span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="w-[25%] px-6 py-4 border-r border-gray-100">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center border-2 border-white shadow-md group-hover:scale-110 transition-transform ${selectedUser?.recordId === user.recordId ? 'ring-2 ring-orange-500' : ''}`}>
-                            <UserIcon className="w-5 h-5 text-white" />
-                          </div>
-                          <span className="font-semibold text-gray-900">{user.fullName}</span>
+                          <span className="font-semibold text-gray-900 break-all">{user.fullName}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="text-gray-700 font-medium">{user.phone || '—'}</span>
+                      <td className="w-[15%] px-6 py-4 border-r border-gray-100">
+                        <span className="text-gray-700 font-medium block break-all">{user.phone || '—'}</span>
+                      </td>
+                      <td className="w-[15%] px-6 py-4">
+                        <span className="text-gray-700 font-medium text-xs block break-all">
+                          {user.lastModified ? 
+                            new Date(user.lastModified).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + 
+                            new Date(user.lastModified).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                            : '—'
+                          }
+                        </span>
                       </td>
                     </motion.tr>
                   ))}
 
-                  {filteredUsers.length === 0 && (
+                  {currentUsers.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="p-16 text-center">
+                      <td colSpan={5} className="p-16 text-center">
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -754,16 +782,72 @@ export default function UsersPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} users
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        currentPage === 1
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 hover:shadow-md'
+                      }`}
+                    >
+                      Previous
+                    </motion.button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <motion.button
+                          key={page}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md'
+                              : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 hover:shadow-md'
+                          }`}
+                        >
+                          {page}
+                        </motion.button>
+                      ))}
+                    </div>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        currentPage === totalPages
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 hover:shadow-md'
+                      }`}
+                    >
+                      Next
+                    </motion.button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </motion.div>
 
-        {/* User Details Panel */}
+        {/* User Details Panel - Takes 1/4 of space */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl border-2 border-gray-200 shadow-xl overflow-hidden"
+          className="xl:col-span-1 bg-white rounded-2xl border-2 border-gray-200 shadow-xl overflow-hidden"
         >
           {selectedUser ? (
             <>
@@ -780,39 +864,49 @@ export default function UsersPage() {
                 </div>
               </div>
 
-              <div className="p-6 space-y-5">
-                <div className="flex flex-col items-center text-center pb-5 border-b border-gray-200">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 via-amber-500 to-orange-600 flex items-center justify-center border-4 border-white shadow-xl mb-4">
-                    <UserIcon className="w-10 h-10 text-white" />
+              <div className="p-6 space-y-4">
+                <div className="flex flex-col items-center text-center pb-4 border-b border-gray-200">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 via-amber-500 to-orange-600 flex items-center justify-center border-4 border-white shadow-xl mb-3">
+                    <UserIcon className="w-8 h-8 text-white" />
                   </div>
-                  <h4 className="font-bold text-gray-900 text-xl mb-1">{selectedUser.fullName}</h4>
+                  <h4 className="font-bold text-gray-900 text-lg mb-1">{selectedUser.fullName}</h4>
                   <p className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full font-medium">{selectedUser.username}</p>
                 </div>
 
                 <div className="space-y-3">
-                  <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md transition-all">
-                    <p className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Record ID</p>
-                    <p className="text-sm font-semibold text-gray-900 font-mono break-all bg-white px-3 py-2 rounded-lg border border-gray-200">{selectedUser.recordId || '—'}</p>
+                  <div className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md transition-all">
+                    <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Record ID</p>
+                    <p className="text-sm font-semibold text-gray-900 font-mono break-all bg-white px-2 py-1 rounded-lg border border-gray-200 overflow-hidden">{selectedUser.recordId || '—'}</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 hover:shadow-md transition-all">
-                    <p className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Username</p>
-                    <p className="text-base font-bold text-gray-900">{selectedUser.username}</p>
+                  <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 hover:shadow-md transition-all">
+                    <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Username</p>
+                    <p className="text-sm font-bold text-gray-900 break-all">{selectedUser.username}</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 hover:shadow-md transition-all">
-                    <p className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Full Name</p>
-                    <p className="text-base font-bold text-gray-900">{selectedUser.fullName}</p>
+                  <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 hover:shadow-md transition-all">
+                    <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Full Name</p>
+                    <p className="text-sm font-bold text-gray-900 break-all">{selectedUser.fullName}</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200 hover:shadow-md transition-all">
-                    <p className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">Phone Number</p>
-                    <p className="text-base font-bold text-gray-900">{selectedUser.phone || '—'}</p>
+                  <div className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200 hover:shadow-md transition-all">
+                    <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Phone Number</p>
+                    <p className="text-sm font-bold text-gray-900 break-all">{selectedUser.phone || '—'}</p>
                   </div>
-                  <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="p-3 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 hover:shadow-md transition-all">
+                    <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Created At</p>
+                    <p className="text-sm font-bold text-gray-900 break-all">
+                      {selectedUser.lastModified ? 
+                        new Date(selectedUser.lastModified).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + 
+                        new Date(selectedUser.lastModified).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                        : '—'
+                      }
+                    </p>
+                  </div>
+                  <div className="p-3 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-1">
                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                       <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Data Source</p>
                     </div>
                     <p className="text-sm font-bold text-emerald-900">S3 Bucket Files</p>
-                    <p className="text-xs text-emerald-700 mt-2">Extracted from uploaded files and reports</p>
+                    <p className="text-xs text-emerald-700 mt-1">Extracted from uploaded files and reports</p>
                   </div>
                 </div>
 

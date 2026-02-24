@@ -1,13 +1,40 @@
+# Tooling
+.windsurf/
+
+# Deployment folders
+doctor-upload-reviewed-deployment/
+deployment/
+build/
+dist/
+
+# Zips
+*.zip
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Node
 node_modules/
 .npm-cache/
-dist/
 .DS_Store
 *.log
 *.local
 vite.config.ts.timestamp*
 
-# Environment variables
-.env
-.env.local
-.env.production
+# Temporary files
+temp/
+tmp/
+.cache/
 
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test files
+test-zip/
+lambda-deploy/
+final-deploy/

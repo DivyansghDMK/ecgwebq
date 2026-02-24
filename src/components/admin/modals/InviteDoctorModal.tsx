@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Modal from "../common/Modal";
+import { createDoctor } from "../../../api/ecgApi";
 
 interface InviteDoctorModalProps {
   isOpen: boolean;
@@ -17,38 +18,52 @@ export default function InviteDoctorModal({ isOpen, onClose, onSuccess }: Invite
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     setIsSubmitting(true);
+    setError(null);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    console.log("Inviting doctor:", formData);
-    alert(`Invitation sent to ${formData.email} successfully!`);
-    
-    setIsSubmitting(false);
-    onSuccess?.();
-    onClose();
-    
-    // Reset form
-    setFormData({
-      name: "",
-      email: "",
-      specialization: "",
-      licenseNumber: "",
-      hospital: "",
-    });
+    try {
+      const doctor = await createDoctor(formData);
+      
+      alert(`Doctor invited successfully!\n\nDoctor ID: ${doctor.doctorId}\n(Please save this ID)`);
+      
+      setIsSubmitting(false);
+      onSuccess?.();
+      onClose();
+      
+      // Reset form
+      setFormData({
+        name: "",
+        email: "",
+        specialization: "",
+        licenseNumber: "",
+        hospital: "",
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Failed to invite doctor');
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Invite Doctor">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                {error}
+            </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Doctor Name <span className="text-red-500">*</span>
