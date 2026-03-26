@@ -30,7 +30,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import doctorImage from '../../assets/doctor.jpg';
-import { fetchDoctorReports, DoctorReportSummary } from '../../api/ecgApi';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DoctorProfile {
   name: string;
@@ -73,6 +73,7 @@ interface FilterState {
 const DoctorDashboardPresentation: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'weekly' | 'monthly'>('today');
   const [earningsGrowth, setEarningsGrowth] = useState(12.5);
   const [activeNav, setActiveNav] = useState('dashboard');
@@ -329,7 +330,10 @@ const DoctorDashboardPresentation: React.FC = () => {
             <motion.button
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => navigate('/')}
+              onClick={() => {
+                logout("doctor");
+                navigate('/login');
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 transition-all"
             >
               <LogOut className="w-5 h-5" />

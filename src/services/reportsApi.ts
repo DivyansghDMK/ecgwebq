@@ -5,6 +5,7 @@
 
 import { apiGet, apiPost } from './apiClient';
 import type { Report, ReportFilters, ReportsResponse } from '../types/reports';
+import { ADMIN_ROUTES } from '@/lib/apiRoutes';
 
 
 
@@ -19,7 +20,7 @@ function buildQueryString(filters: ReportFilters): string {
     params.append('name', filters.name.trim());
   }
   if (filters.phoneNumber) {
-    params.append('phoneNumber', filters.phoneNumber.trim());
+    params.append('phone', filters.phoneNumber.trim());
   }
   if (filters.deviceId) {
     params.append('deviceId', filters.deviceId.trim());
@@ -43,7 +44,7 @@ function buildQueryString(filters: ReportFilters): string {
 export async function fetchReports(filters: ReportFilters = {}): Promise<ReportsResponse> {
   // Real API call
   const queryString = buildQueryString(filters);
-  const endpoint = `/reports${queryString}`;
+  const endpoint = `${ADMIN_ROUTES.reports}${queryString}`;
   
   try {
     const response = await apiGet<{ success: boolean; total: number; reports: Report[] }>(endpoint);
@@ -73,7 +74,7 @@ export async function fetchReports(filters: ReportFilters = {}): Promise<Reports
  */
 export async function fetchReportById(id: string): Promise<Report> {
   try {
-    const response = await apiGet<{ success: boolean; data: Report }>(`/report?id=${id}`);
+    const response = await apiGet<{ success: boolean; data: Report }>(`${ADMIN_ROUTES.report}?id=${id}`);
     
     // Handle the actual backend response structure
     if (response.success && response.data) {
@@ -93,7 +94,7 @@ export async function fetchReportById(id: string): Promise<Report> {
  */
 export async function uploadECGData(data: any): Promise<any> {
   try {
-    const response = await apiPost<any>('/upload', data);
+    const response = await apiPost<any>(ADMIN_ROUTES.upload, data);
     return response;
   } catch (error: any) {
     throw new Error(error.message || 'Failed to upload ECG data');

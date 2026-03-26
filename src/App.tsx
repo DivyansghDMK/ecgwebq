@@ -15,6 +15,7 @@ import { LoginSection } from "@/sections/LoginSection";
 import { Footer } from "@/components/Footer";
 import NotificationContainer from "@/components/common/NotificationContainer";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { AuthProvider } from "@/contexts/AuthContext";
  
 import { CardmiaChatbot } from "@/components/CardmiaChatbot";
 import { Routes, Route } from "react-router-dom";
@@ -25,7 +26,7 @@ import DashboardOverview from "@/components/admin/dashboard/DashboardOverview";
 import S3FileBrowser from "@/components/S3FileBrowser";
 import ECGGraphsPage from "@/components/admin/graphs/ECGGraphsPage";
 import LoginPage from "@/components/auth/LoginPage";
-import Dashboard from "@/components/dashboard/Dashboard";
+import RequireRole from "@/components/auth/RequireRole";
 import CPAPLogin from "@/components/dashboard_CPAP_BiPAP/CPAPLogin";
 import CPAPDashboard from "@/components/dashboard_CPAP_BiPAP/CPAPDashboard";
 import CPAPSettings from "@/components/dashboard_CPAP_BiPAP/CPAPSettings";
@@ -58,8 +59,9 @@ function ScrollToHash() {
 
 export default function App() {
   return (
-    <NotificationProvider>
-      <Routes>
+    <AuthProvider>
+      <NotificationProvider>
+        <Routes>
         {/*normal url */}
         <Route
           path="/"
@@ -89,20 +91,22 @@ export default function App() {
       {/*admin login (removed external link variant) */}
 
       {/*admin dashboard */}
-      <Route path="/artists" element={<AdminLayout />}>
-        <Route index element={<DashboardOverview />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="s3-browser" element={<S3FileBrowser />} />
-        <Route path="graphs" element={<ECGGraphsPage />} />
+      <Route element={<RequireRole role="admin" />}>
+        <Route path="/artists" element={<AdminLayout />}>
+          <Route index element={<DashboardOverview />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="s3-browser" element={<S3FileBrowser />} />
+          <Route path="graphs" element={<ECGGraphsPage />} />
+        </Route>
+      </Route>
+
+      <Route element={<RequireRole role="doctor" />}>
+        <Route path="/doctor" element={<DoctorDashboardPresentation />} />
+        <Route path="/doctor/reports" element={<DoctorReportsPage />} />
       </Route>
       {/* public login for admin / doctor */}
       <Route path="/login" element={<LoginPage />} />
-
-        {/* common dashboard (role-based later) */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/doctor" element={<DoctorDashboardPresentation />} />
-            <Route path="/doctor/reports" element={<DoctorReportsPage />} />
 
         {/* CPAP/BiPAP Routes */}
         <Route path="/cpap/login" element={<CPAPLogin />} />
@@ -125,5 +129,6 @@ export default function App() {
       </Routes>
       <NotificationContainer />
     </NotificationProvider>
+    </AuthProvider>
   );
 }

@@ -10,7 +10,10 @@
 // Get API base URL from environment variables
 // For development: http://localhost:3000/api
 // For production: Set in .env file as VITE_API_BASE_URL=https://your-api.com/api
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com";
+import { buildAuthHeaders } from '@/lib/auth';
+import { getAdminProtectedApiBase } from '@/lib/apiBase';
+
+const API_BASE_URL = getAdminProtectedApiBase();
 
 /**
  * API Response wrapper (matches backend response format)
@@ -25,35 +28,17 @@ export interface APIResponse<T = any> {
 }
 
 /**
- * Get authentication token from storage
- * Checks both 'token' and 'authToken' for compatibility
- */
-function getAuthToken(): string | null {
-  return localStorage.getItem('token') || 
-         localStorage.getItem('authToken') || 
-         sessionStorage.getItem('token') || 
-         sessionStorage.getItem('authToken');
-}
-
-/**
  * Generic API request function
  */
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<APIResponse<T>> {
-  const token = getAuthToken();
-
   // Build headers
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(buildAuthHeaders('admin') as Record<string, string>),
     ...(options.headers as Record<string, string> || {}),
   };
-
-  // Add auth token if available
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -151,12 +136,7 @@ export async function apiPostForm<T>(
   endpoint: string,
   formData: FormData
 ): Promise<T> {
-  const token = getAuthToken();
-  
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  const headers: Record<string, string> = buildAuthHeaders('admin', false) as Record<string, string>;
   // Don't set Content-Type for FormData, browser will set it with boundary
 
   try {

@@ -72,7 +72,7 @@ export default function DashboardOverview() {
       try {
         const response = await fetchS3Files(currentPage, limit, '');
         allFiles.push(...response.files);
-        hasMore = response.pagination.hasNext;
+        hasMore = response.pagination?.hasNext || false;
         currentPage++;
       } catch (error) {
         console.error(`Error fetching S3 page ${currentPage}:`, error);
