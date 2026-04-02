@@ -1,21 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Shield, Stethoscope, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { useNotification } from "../../contexts/NotificationContext";
-import { doctorLogin } from "../../api/ecgApi";
+import { useAuth } from "../../contexts/AuthContext";
 
 type Role = "admin" | "doctor";
 
-// Admin credentials from environment variables
-const ADMIN_CREDENTIALS = {
-  username: import.meta.env.VITE_ADMIN_USERNAME || "admin@cardiox",
-  password: import.meta.env.VITE_ADMIN_PASSWORD || "26!Adm1n#Str0ng"
-};
-
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { showNotification } = useNotification();
+  const { login, isLoading } = useAuth();
+  const [submittingRole, setSubmittingRole] = useState<Role | null>(null);
 
   const [adminCredentials, setAdminCredentials] = useState({
     username: "",
@@ -34,41 +31,21 @@ export default function LoginPage() {
       return;
     }
 
-    // Admin login - use hardcoded credentials
-    if (role === "admin") {
-      if (username !== ADMIN_CREDENTIALS.username || password !== ADMIN_CREDENTIALS.password) {
-        showNotification("Invalid credentials. Access denied.", "error");
-        return;
-      }
+    setSubmittingRole(role);
+    const success = await login(username, password, role);
+    
+    if (success) {
+      showNotification(`Successfully logged in as ${role}`, "success");
 
-      // Successful admin authentication
-      localStorage.setItem("role", "admin");
-      localStorage.setItem("token", "admin-token");
-      localStorage.setItem("admin_logged_in", "true");
-      navigate("/artists");
-      return;
+      const defaultTarget = role === "admin" ? "/artists" : "/doctor";
+      const requestedTarget = location.state?.from?.pathname;
+      const target = typeof requestedTarget === "string" ? requestedTarget : defaultTarget;
+      navigate(target, { replace: true });
+    } else {
+      showNotification("Invalid credentials. Access denied.", "error");
     }
 
-    // Doctor login - use backend API
-    try {
-      const data = await doctorLogin(username, password);
-
-      if (data.success) {
-        // Successful doctor authentication
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", "doctor");
-        localStorage.setItem("doctor_logged_in", "true");
-        localStorage.setItem("doctor_info", JSON.stringify(data.doctor));
-        localStorage.setItem("ecg_doctor_name", data.doctor.doctor_name);
-        navigate("/doctor");
-      } else {
-        // Handle authentication errors
-        showNotification(data.message || "Login failed. Please try again.", "error");
-      }
-    } catch (error: any) {
-      console.error("Doctor login error:", error);
-      showNotification(error.message || "Login failed. Please try again.", "error");
-    }
+    setSubmittingRole(null);
   };
 
   const loginBoxes = [
@@ -217,8 +194,9 @@ export default function LoginPage() {
                     )
                   }
                   className={`w-full mt-6 py-3.5 rounded-xl bg-gradient-to-r ${box.gradient} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200`}
+                  disabled={isLoading}
                 >
-                  Login as {box.title}
+                  {isLoading && submittingRole === box.role ? "Signing In..." : `Login as ${box.title}`}
                 </motion.button>
               </motion.div>
             );

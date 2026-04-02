@@ -5,31 +5,44 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { fetchS3Files, fetchS3FileContent, downloadPDF, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
-import { S3File, S3FilesResponse } from '../../backend-api/types/ecg';
+import { fetchS3Files, fetchS3FileContent, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
+import { S3File, S3FilesResponse } from '../api/types/ecg';
+
 import { Download, Eye, Search, X, FileText, Loader2 } from 'lucide-react';
 
 const S3FileBrowser: React.FC = () => {
+  const DEFAULT_PAGE_SIZE = 100;
   const [files, setFiles] = useState<S3File[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [search, setSearch] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pagination, setPagination] = useState<S3FilesResponse['pagination'] | null>(null);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [pagination, setPagination] = useState<S3FilesResponse['pagination']>(undefined);
   const [selectedFile, setSelectedFile] = useState<S3File | null>(null);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [jsonContent, setJsonContent] = useState<any | null>(null);
   const [loadingJson, setLoadingJson] = useState<boolean>(false);
 
   // Load files from S3
-  const loadFiles = async (page: number = 1, searchQuery: string = '') => {
+  const loadFiles = async (page: number = 1, searchQuery: string = '', limit: number = pageSize) => {
     setLoading(true);
     setError('');
     
     try {
-      const data = await fetchS3Files(page, 20, searchQuery);
-      setFiles(data.files || []);
-      setPagination(data.pagination);
+      const response = await fetchS3Files(page, limit, searchQuery);
+
+      // ✅ Debug log — remove once pagination is confirmed working
+      // console.log('[S3FileBrowser] raw API response:', response);
+
+      // fetchS3Files() already unwraps the axios response and returns S3FilesResponse directly
+      const files: S3File[] = response?.files ?? [];
+      const pagination: S3FilesResponse['pagination'] = response?.pagination ?? undefined;
+
+      console.log('[S3FileBrowser] files:', files.length, '| pagination:', pagination);
+
+      setFiles(files);
+      setPagination(pagination);
       setCurrentPage(page);
     } catch (err) {
       setError(handleApiError(err));
@@ -40,18 +53,18 @@ const S3FileBrowser: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    loadFiles();
-  }, []);
+    loadFiles(1, search, pageSize);
+  }, [pageSize]);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    loadFiles(1, search);
+    loadFiles(1, search, pageSize);
   };
 
   // Handle pagination
   const handlePageChange = (page: number) => {
-    loadFiles(page, search);
+    loadFiles(page, search, pageSize);
   };
 
   // Handle file preview
@@ -145,7 +158,7 @@ const S3FileBrowser: React.FC = () => {
               type="button"
               onClick={() => {
                 setSearch('');
-                loadFiles(1, '');
+                loadFiles(1, '', pageSize);
               }}
               whileHover={{ y: -1, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -154,6 +167,27 @@ const S3FileBrowser: React.FC = () => {
               Clear
             </motion.button>
           </form>
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              {pagination
+                ? `Showing page ${pagination.page} of ${pagination.totalPages} with ${pagination.total} total files`
+                : `Showing up to ${pageSize} files per page`}
+            </p>
+            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              Files per page
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-900 dark:text-slate-50 outline-none"
+              >
+                {[20, 50, 100, 200].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
         {/* Error Message */}
@@ -261,7 +295,7 @@ const S3FileBrowser: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
-                      disabled={!pagination.hasPrev}
+                      disabled={currentPage <= 1}
                       className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,12 +323,12 @@ const S3FileBrowser: React.FC = () => {
                   
                     <button
                       onClick={() => handlePageChange(currentPage + 1)}
-                      disabled={!pagination.hasNext}
+                      disabled={currentPage >= pagination.totalPages}
                       className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
                     >
                       Next
                       <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
                   </div>
@@ -376,9 +410,13 @@ const S3FileBrowser: React.FC = () => {
                     </div>
                   )
                 ) : selectedFile.type === 'application/pdf' && selectedFile.url ? (
-                  // PDF Preview
+                  // ✅ FIX 2: Route PDF preview through backend proxy to avoid preflight CORS errors.
+                  // Instead of passing the raw S3 URL to Google Docs Viewer (which triggers a
+                  // cross-origin preflight from Google's servers to your S3 bucket), we use our
+                  // own backend proxy endpoint. The backend fetches the file from S3 privately
+                  // and streams it back with the correct CORS headers.
                   <iframe
-                    src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(selectedFile.url)}`}
+                    src={selectedFile.url}
                     className="w-full h-[600px] border-0 rounded-lg shadow-inner bg-white"
                     title={selectedFile.name}
                   />

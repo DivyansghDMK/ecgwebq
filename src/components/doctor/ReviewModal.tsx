@@ -5,6 +5,7 @@ import { createReviewedPdf } from "@/utils/pdfProcessor";
 import { uploadReviewedReport } from "@/api/ecgApi";
 import { SignatureCanvas } from "./SignatureCanvas";
 import { useNotification } from "@/contexts/NotificationContext";
+import { getStoredUser } from "@/lib/auth";
 
 export interface DoctorReport {
   key: string;
@@ -62,9 +63,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
 
   // Load saved Doctor ID from localStorage on mount
   useEffect(() => {
-    const savedDoctorId = localStorage.getItem("ecg_doctor_id");
-    if (savedDoctorId) {
-      setDoctorId(savedDoctorId);
+    const doctorUser = getStoredUser("doctor");
+    if (doctorUser?.userId) {
+      setDoctorId(doctorUser.userId);
     }
   }, []);
 
@@ -102,9 +103,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       formData.append("doctorId", doctorId.trim());
 
       await uploadReviewedReport(formData);
-
-      // Save Doctor ID to localStorage for future use
-      localStorage.setItem("ecg_doctor_id", doctorId.trim());
 
       // Show success toast notification
       showNotification("Report reviewed successfully.", "success");
@@ -220,9 +218,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   <input
                     type="text"
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-                    placeholder="Enter your doctor ID"
+                    placeholder="Doctor ID from current session"
                     value={doctorId}
-                    onChange={(e) => setDoctorId(e.target.value)}
+                    readOnly
                   />
                 </label>
 
@@ -324,5 +322,4 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     </AnimatePresence>
   );
 };
-
 

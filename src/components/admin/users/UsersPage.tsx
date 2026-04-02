@@ -46,7 +46,7 @@ export default function UsersPage() {
         const response = await fetchS3Files(s3Page, limit, '');
         allFiles.push(...response.files);
         
-        hasMore = response.pagination.hasNext;
+        hasMore = response.pagination?.hasNext || false;
         s3Page++;
         
         // Safety limit to prevent infinite loops

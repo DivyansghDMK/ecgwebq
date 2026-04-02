@@ -5,10 +5,12 @@ import { motion } from "framer-motion";
 import { FileText, Eye, RefreshCcw, LayoutDashboard, LogOut, Heart, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { fetchDoctorReports, fetchReviewedReports, DoctorReportSummary } from "@/api/ecgApi";
 import { ReviewModal, DoctorReport } from "./ReviewModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const DoctorReportsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const [reports, setReports] = useState<DoctorReport[]>([]);
   const [reviewedReports, setReviewedReports] = useState<DoctorReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,14 +30,6 @@ export const DoctorReportsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      // Get doctorName from localStorage
-      const doctorName = localStorage.getItem("ecg_doctor_name");
-      if (!doctorName) {
-        setError("Doctor name not found. Please review a report first to set your Doctor Name.");
-        setReports([]);
-        return;
-      }
-      
       const data = await fetchDoctorReports();
       setReports(data);
     } catch (err: any) {
@@ -49,14 +43,6 @@ export const DoctorReportsPage: React.FC = () => {
     setReviewedLoading(true);
     setReviewedError(null);
     try {
-      // Get doctorName from localStorage
-      const doctorName = localStorage.getItem("ecg_doctor_name");
-      if (!doctorName) {
-        setReviewedError("Doctor name not found. Please review a report first to set your Doctor Name.");
-        setReviewedReports([]);
-        return;
-      }
-      
       const data = await fetchReviewedReports();
       setReviewedReports(data);
     } catch (err: any) {
@@ -211,7 +197,10 @@ export const DoctorReportsPage: React.FC = () => {
           <motion.button
             whileHover={{ x: 4 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/')}
+            onClick={() => {
+              logout("doctor");
+              navigate('/login');
+            }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400 hover:bg-red-900/20 transition-all"
           >
             <LogOut className="w-5 h-5" />
@@ -476,5 +465,4 @@ export const DoctorReportsPage: React.FC = () => {
 };
 
 export default DoctorReportsPage;
-
 

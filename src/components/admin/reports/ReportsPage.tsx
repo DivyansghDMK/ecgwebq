@@ -1,27 +1,16 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Filter, Download, FileText, Loader2, AlertCircle, X, Eye, EyeOff, Phone } from "lucide-react";
 import { fetchReports, fetchReport } from "../../../api/ecgApi";
 import { downloadPDF, createPDFPreviewURL, generatePDFfromElement } from "../../../utils/pdfGenerator";
-import type { ECGReportMetadata, ReportFilters } from '../../../../backend-api/types/ecg';
+import type { ECGReportMetadata, ReportFilters } from '../../../api/types/ecg';
 export default function ReportsPage() {
-  const navigate = useNavigate();
-  
-  // Admin access check
-  useEffect(() => {
-    const role = localStorage.getItem("role");
-    const adminLoggedIn = localStorage.getItem("admin_logged_in");
-    
-    if (role !== "admin" && adminLoggedIn !== "true") {
-      navigate("/login");
-    }
-  }, [navigate]);
-
   type ReportWithUrl = ECGReportMetadata & { 
     pdfUrl?: string | null; 
     jsonUrl?: string | null; 
     patientName?: string;
+    name?: string; // Added to match ECGReportMetadata
+    phoneNumber?: string; // Added to match ECGReportMetadata
   };
 
   // State management
@@ -116,8 +105,8 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
         if (urlResponse.success && urlResponse.data) {
           currentReport = {
             ...report,
-            pdfUrl: urlResponse.data.pdfUrl,
-            jsonUrl: urlResponse.data.jsonUrl
+            pdfUrl: urlResponse.data.pdfUrl || undefined,
+            jsonUrl: urlResponse.data.jsonUrl || undefined
           };
           
           // Update selected report with new URLs
@@ -219,7 +208,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
         <div className="bg-amber-50/60 dark:bg-amber-900/30 border border-amber-200/70 dark:border-amber-500/60 rounded-lg p-3 flex items-center gap-2">
           <AlertCircle className="text-amber-600 dark:text-amber-300" size={18} />
           <p className="text-amber-800 dark:text-amber-100 text-sm flex-1">
-            <strong>Testing Mode:</strong> Using mock data. To use real API, set VITE_API_BASE_URL in .env file.
+            <strong>Testing Mode:</strong> Using mock data. To use real API, set the admin protected API base env vars in your env file.
           </p>
         </div>
       )}
@@ -568,8 +557,8 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-700 dark:text-slate-300">Org: {selectedReport.ecg?.org || '-'}</p>
-                      <p className="text-sm text-slate-700 dark:text-slate-300">Phone No: {selectedReport.ecg?.phone || selectedReport.phoneNumber || '-'}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">Org: {selectedReport.ecg?.patient.org || '-'}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">Phone No: {selectedReport.ecg?.patient.phone || selectedReport.phoneNumber || '-'}</p>
                     </div>
                     <h4 className="text-2xl font-bold text-gray-900 dark:text-slate-50">ECG Report</h4>
                     <div className="w-28" />
@@ -604,15 +593,15 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                       <div className="grid grid-cols-3">
                         <div className="border-r border-gray-300 p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">Maximum Heart Rate:</div>
-                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.overview?.maxHR ?? '-'}</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics.overview?.maxHR ?? '-'}</div>
                         </div>
                         <div className="border-r border-gray-300 p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">Minimum Heart Rate:</div>
-                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.overview?.minHR ?? '-'}</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics.overview?.minHR ?? '-'}</div>
                         </div>
                         <div className="p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">Average Heart Rate:</div>
-                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.overview?.avgHR ?? '-'}</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics.overview?.avgHR ?? '-'}</div>
                         </div>
                       </div>
                     </div>
@@ -626,7 +615,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                         <div className="p-2 font-semibold text-slate-800 dark:text-slate-200 border-x border-gray-300">Observed Values</div>
                         <div className="p-2 font-semibold text-slate-800 dark:text-slate-200">Standard Range</div>
                       </div>
-                      {(selectedReport.ecg?.observation || []).map((row: any, i: number) => (
+                      {(selectedReport.ecg?.metrics.observation || []).map((row: any, i: number) => (
                         <div key={i} className="grid grid-cols-3 border-t border-gray-300">
                           <div className="p-2 text-slate-700 dark:text-slate-300">{row.name}</div>
                           <div className="p-2 text-slate-700 dark:text-slate-300 border-x border-gray-300">{row.value}</div>
@@ -643,7 +632,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                         <div className="col-span-2 p-2 font-semibold text-slate-800 dark:text-slate-200">S.No.</div>
                         <div className="col-span-10 p-2 font-semibold text-slate-800 dark:text-slate-200">Conclusion</div>
                       </div>
-                      {(selectedReport.ecg?.conclusions || []).map((text: string, idx: number) => (
+                      {(selectedReport.ecg?.metrics.conclusions || []).map((text: string, idx: number) => (
                         <div key={idx} className="grid grid-cols-12 border-t border-gray-300">
                           <div className="col-span-2 p-2 text-slate-700 dark:text-slate-300">{idx + 1}</div>
                           <div className="col-span-10 p-2 text-slate-700 dark:text-slate-300">{text}</div>
@@ -744,7 +733,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
         <div className="flex flex-wrap gap-4">
           <div>Generated: {formatDate(new Date().toISOString())}</div>
           <div>Mode: {(import.meta.env as any).VITE_USE_MOCK_DATA === 'true' ? 'Mock Data (Testing)' : 'Live API'}</div>
-          <div>API: {(import.meta.env as any).VITE_API_BASE_URL || 'http://localhost:3000/api'}</div>
+          <div>API: {(import.meta.env as any).VITE_ADMIN_PROTECTED_API_BASE_URL || (import.meta.env as any).VITE_API_BASE_URL || 'http://localhost:3000/api'}</div>
           <div>Document Version: v1.0</div>
         </div>
       </div>

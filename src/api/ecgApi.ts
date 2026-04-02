@@ -11,41 +11,31 @@ import type {
   S3FilesResponse,
   ECGReportMetadata,
   S3File,
-} from '../../backend-api/types/ecg';
-import { mockReports, filterReports } from './mockData';
+} from './types/ecg';
+import { buildAuthHeaders } from '@/lib/auth';
+import { getAdminProtectedApiBase, getDoctorApiBase, joinApiUrl } from '@/lib/apiBase';
+import { ADMIN_ROUTES, DOCTOR_ROUTES } from '@/lib/apiRoutes';
 
 // API Bases
-// For reliability we hard‑code the current production REST API base.
-// Main API (used by dashboard, reports, S3 browser) – must end with /api
-const API_BASE_URL = 'https://8m9fgt2fz1.execute-api.us-east-1.amazonaws.com/prod/api';
-
-// Doctor API (used by doctor dashboard & upload). Same API, but without /api suffix.
-const DOCTOR_API_BASE_URL = 'https://8m9fgt2fz1.execute-api.us-east-1.amazonaws.com/prod';
-
+// Configure these URLs to point to your backend service
+const API_BASE_URL = getAdminProtectedApiBase();
+const DOCTOR_API_BASE_URL = getDoctorApiBase();
 /**
  * Get authentication headers for API requests
  */
-function getAuthHeaders(isJson: boolean = true): HeadersInit {
-  const token = localStorage.getItem("token");
+function getAdminAuthHeaders(isJson: boolean = true): HeadersInit {
+  return buildAuthHeaders("admin", isJson);
+}
 
-  const headers: Record<string, string> = {};
-
-  if (isJson) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  return headers;
+function getDoctorAuthHeaders(isJson: boolean = true): HeadersInit {
+  return buildAuthHeaders("doctor", isJson);
 }
 
 /**
  * Doctor login API - uses dedicated API Gateway for login
  */
 export async function doctorLogin(doctorName: string, password: string) {
-  const url = "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/admin/doctor/login";
+  const url = joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.login);
 
   const response = await fetch(url, {
     method: "POST",
@@ -62,7 +52,24 @@ export async function doctorLogin(doctorName: string, password: string) {
     throw new Error(`Login failed: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  if (data?.success && data?.token && data?.doctor) {
+    return {
+      success: true,
+      data: {
+        token: data.token,
+        user: {
+          userId: data.doctor.id,
+          role: "doctor",
+          name: data.doctor.doctor_name,
+          email: data.doctor.email,
+        },
+      },
+    };
+  }
+
+  return data;
 }
 
 /**
@@ -72,7 +79,9 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   const base = API_BASE_URL.replace(/\/$/, '');
   const url = `${base}${endpoint}`;
 
+  const authHeaders = getAdminAuthHeaders();
   const headers: Record<string, string> = {
+    ...(typeof authHeaders === 'object' && authHeaders !== null ? authHeaders as Record<string, string> : {}),
     ...(options.headers as Record<string, string> || {}),
   };
 
@@ -238,8 +247,7 @@ export async function fetchS3Files(
   params.append('limit', limit.toString());
   if (search) params.append('search', search);
 
-  const response = await apiRequest<{ success: boolean; data: S3FilesResponse } | S3FilesResponse>(`/s3-files?${params.toString()}`);
-  
+  const response = await apiRequest<{ success: boolean; data: S3FilesResponse } | S3FilesResponse>(`${ADMIN_ROUTES.s3Files}?${params.toString()}`);
   if ('data' in response && response.data) {
     return response.data;
   }
@@ -247,7 +255,7 @@ export async function fetchS3Files(
 }
 
 export async function fetchS3FileContent<T = any>(key: string): Promise<T> {
-  const response = await apiRequest<{ success: boolean; data?: T; error?: { message: string; code: string } }>(`/s3-file-content?key=${encodeURIComponent(key)}`);
+  const response = await apiRequest<{ success: boolean; data?: T; error?: { message: string; code: string } }>(`${ADMIN_ROUTES.s3FileContent}?key=${encodeURIComponent(key)}`);
   
   // Check if the response indicates an error
   if (response && typeof response === 'object') {
@@ -279,11 +287,11 @@ export interface DoctorReportSummary {
 }
 
 export async function fetchDoctorReports(): Promise<DoctorReportSummary[]> {
-  const url = "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/api/doctor/reports?status=pending";
+  const url = `${joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.reports)}?status=pending`;
 
   const response = await fetch(url, {
     method: "GET",
-    headers: getAuthHeaders(),
+    headers: getDoctorAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -291,15 +299,15 @@ export async function fetchDoctorReports(): Promise<DoctorReportSummary[]> {
   }
 
   const data = await response.json();
-  return data.reports || [];
+  return data.reports || data.data?.reports || [];
 }
 
 export async function uploadReviewedReport(formData: FormData): Promise<void> {
-  const url = "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/api/doctor/upload-reviewed";
+  const url = joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.uploadReviewed);
 
   const response = await fetch(url, {
     method: "POST",
-    headers: getAuthHeaders(false), // No Content-Type for FormData
+    headers: getDoctorAuthHeaders(false), // No Content-Type for FormData
     body: formData,
   });
 
@@ -366,11 +374,12 @@ export interface Doctor {
 }
 
 export async function fetchReviewedReports(): Promise<DoctorReportSummary[]> {
-  const url = "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/api/doctor/reports?status=reviewed";
+  const params = new URLSearchParams({ status: "reviewed" });
+  const url = `${joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.reports)}?${params.toString()}`;
 
   const response = await fetch(url, {
     method: "GET",
-    headers: getAuthHeaders(),
+    headers: getDoctorAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -385,17 +394,15 @@ export async function fetchReviewedReports(): Promise<DoctorReportSummary[]> {
   }
 
   const data = await response.json();
-  return data.reports || [];
+  return data.reports || data.data?.reports || [];
 }
 
 export async function fetchDoctors(): Promise<Doctor[]> {
-  const url = `${API_BASE_URL}/admin/doctor`;
+  const url = joinApiUrl(API_BASE_URL, ADMIN_ROUTES.getDoctors);
 
   const response = await fetch(url, {
     method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: getAdminAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -408,11 +415,11 @@ export async function fetchDoctors(): Promise<Doctor[]> {
     throw new Error(data.message || "Failed to fetch doctors");
   }
 
-  return data.doctors || [];
+  return data.doctors || data.data?.doctors || [];
 }
 
 export async function createDoctor(payload: CreateDoctorPayload): Promise<Doctor> {
-  const response = await apiRequest<{success: boolean, data: { doctor: Doctor } } | { success: boolean, doctor: Doctor }>('/admin/create-doctor', {
+  const response = await apiRequest<{success: boolean, data: { doctor: Doctor } } | { success: boolean, doctor: Doctor }>(ADMIN_ROUTES.createDoctor, {
     method: 'POST',
     body: JSON.stringify(payload)
   });

@@ -2,10 +2,12 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogOut, AlertCircle, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -259,9 +261,7 @@ export default function AdminLayout() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => {
-                        localStorage.removeItem("admin_logged_in");
-                        localStorage.removeItem("role");
-                        localStorage.removeItem("token");
+                        logout("admin");
                         navigate("/login");
                       }}
                       className="flex-1 py-3 px-6 rounded-xl font-semibold text-white bg-gradient-to-r from-red-500 via-red-600 to-red-700 hover:from-red-600 hover:via-red-700 hover:to-red-800 shadow-lg hover:shadow-xl hover:shadow-red-500/50 transition-all duration-300"
