@@ -13,7 +13,9 @@ const navItems = [
   { href: "#features", label: "Highlights" },
   { href: "#dashboard", label: "Dashboard" },
   { href: "#control", label: "Control" },
+  { href: "#modes", label: "Modes" },
   { href: "#analysis", label: "Analysis" },
+  { href: "#waveform-analysis", label: "Waveform" },
   { href: "#device", label: "Device" },
   { href: "#support", label: "Support" }
 ];
@@ -98,4 +100,3 @@ export function Navbar() {
     </header>
   );
 }
-

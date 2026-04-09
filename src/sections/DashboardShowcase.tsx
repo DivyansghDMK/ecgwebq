@@ -12,9 +12,27 @@ const metrics = [
 ];
 
 const reports = [
-  { title: "2025-11-12 15:16 | ECG Report", status: "Open" },
-  { title: "2025-11-10 16:04 | ECG Report", status: "Open" },
-  { title: "2025-11-10 14:35 | ECG Report", status: "Open" }
+  {
+    fileName: "ECG_Report_12_1_20260408_100937.pdf",
+    date: "2026-04-08",
+    time: "10:09 AM",
+    label: "12-Lead ECG Report",
+    href: new URL("../Assets/reports/ECG_Report_12_1_20260408_100937.pdf", import.meta.url).href
+  },
+  {
+    fileName: "ECG_Report_12_1_20260408_100930.pdf",
+    date: "2026-04-08",
+    time: "10:09 AM",
+    label: "12-Lead ECG Report",
+    href: new URL("../Assets/reports/ECG_Report_12_1_20260408_100930.pdf", import.meta.url).href
+  },
+  {
+    fileName: "ECG_Report_12_1_20260408_100911.pdf",
+    date: "2026-04-08",
+    time: "10:09 AM",
+    label: "12-Lead ECG Report",
+    href: new URL("../Assets/reports/ECG_Report_12_1_20260408_100911.pdf", import.meta.url).href
+  }
 ];
 
 export function DashboardShowcase() {
@@ -85,10 +103,10 @@ export function DashboardShowcase() {
                 <div className="mt-4 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
                   <div className="relative aspect-[16/10] w-full">
                     <img
-                    src="/assets/dashboard-overview.jpg"
+                      src="/src/Assets/dashboard.png"
                       alt="ECG dashboard overview"
-                    loading="lazy"
-                      className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-contain object-center p-2"
                     />
                   </div>
                 </div>
@@ -101,13 +119,25 @@ export function DashboardShowcase() {
                 </p>
                 {reports.map((report) => (
                   <div
-                    key={report.title}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70"
+                    key={report.fileName}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70"
                   >
-                    <p>{report.title}</p>
-                    <button className="text-brand-electric hover:underline">
-                      {report.status}
-                    </button>
+                    <div className="min-w-0">
+                      <p className="font-medium leading-snug text-white/80">
+                        {report.date}
+                      </p>
+                      <p className="leading-snug text-white/65">
+                        {report.time} | {report.label}
+                      </p>
+                    </div>
+                    <a
+                      href={report.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 text-brand-electric hover:underline"
+                    >
+                      Open
+                    </a>
                   </div>
                 ))}
               </CardContent>

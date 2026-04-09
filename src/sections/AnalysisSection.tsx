@@ -55,10 +55,10 @@ export function AnalysisSection() {
             <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
               <div className="relative aspect-[16/10] w-full md:aspect-[16/9]">
                 <img
-                  src="/assets/analysis-lead-ii.jpg"
+                  src="src/Assets/Lead_II.png"
                   alt="Lead II waveform analysis screen"
                   loading="lazy"
-                  className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                  className="absolute inset-0 h-full w-full object-contain object-center p-2"
                 />
               </div>
             </div>

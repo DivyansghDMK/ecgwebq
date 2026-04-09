@@ -64,7 +64,7 @@ const knowledgeBase: Record<string, string | ((query: string) => string)> = {
   
   "contact": "For support or inquiries about CardioX, please contact our Solutions Team:\n\n📧 Email: ankur.kumar@deckmount.in\n📞 Direct Phone: +91 87000 76769\n📞 Company Phone: 1800 309 2499\n\nYou can also visit the Support section on this website. The CardioX system includes comprehensive documentation and support resources for clinical teams.",
   
-  "contact details": "Here are the contact details for CardioX support:\n\n📧 Email: ankur.kumar@deckmount.in\n📞 Direct Phone: +91 87000 76769\n📞 Company Phone: 1800 309 2499\n\nAddress: 260, Phase IV, Udyog Vihar, Sector 18, Gurugram, Haryana 122015\nWebsite: deckmount.in\n\nYou can also visit the Support section on this website for more information.",
+  "contact details": "Here are the contact details for CardioX support:\n\n📧 Email: ankur.kumar@deckmount.in\n📞 Direct Phone: +91 87000 76769\n📞 Company Phone: 1800 309 2499\n\nAddress: 683, Udyog Vihar, Phase 5, Gurugram, Haryana 122016, India\nWebsite: deckmount.in\n\nYou can also visit the Support section on this website for more information.",
   
   "pricing": "For information about CardioX pricing, licensing, or deployment options, please contact Deckmount directly. They can provide details about Windows & macOS builds, cloud integration options, and enterprise deployment packages.",
 };

@@ -80,10 +80,10 @@ export function Hero() {
               <div className="mt-6 w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black via-slate-900 to-slate-950 shadow-inner">
                 <div className="relative aspect-[16/10] w-full">
                   <img
-                    src="/assets/login-screen.jpg"
+                    src="/src/Assets/Login.png"
                     alt="CardioX Login Screen"
                     loading="lazy"
-                    className="absolute inset-0 h-full w-full object-contain object-center opacity-90 sm:object-cover"
+                    className="absolute inset-0 h-full w-full object-contain object-center p-2 opacity-90"
                   />
                 </div>
               </div>
