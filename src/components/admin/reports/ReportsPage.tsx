@@ -497,19 +497,67 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                   
                   {/* Page Numbers */}
                   <div className="flex items-center space-x-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                          page === currentPage
-                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
-                            : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
-                        }`}
-                      >
-                        {page}
-                      </button>
-                    ))}
+                    {(() => {
+                      const pages = [];
+                      const maxVisible = 7;
+                      const startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                      const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                      
+                      // Always show first page
+                      if (startPage > 1) {
+                        pages.push(
+                          <button
+                            key={1}
+                            onClick={() => handlePageChange(1)}
+                            className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
+                          >
+                            1
+                          </button>
+                        );
+                        if (startPage > 2) {
+                          pages.push(
+                            <span key="start-ellipsis" className="px-2 text-slate-500">...</span>
+                          );
+                        }
+                      }
+                      
+                      // Show visible pages
+                      for (let i = startPage; i <= endPage; i++) {
+                        pages.push(
+                          <button
+                            key={i}
+                            onClick={() => handlePageChange(i)}
+                            className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                              i === currentPage
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
+                                : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
+                            }`}
+                          >
+                            {i}
+                          </button>
+                        );
+                      }
+                      
+                      // Always show last page
+                      if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) {
+                          pages.push(
+                            <span key="end-ellipsis" className="px-2 text-slate-500">...</span>
+                          );
+                        }
+                        pages.push(
+                          <button
+                            key={totalPages}
+                            onClick={() => handlePageChange(totalPages)}
+                            className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
+                          >
+                            {totalPages}
+                          </button>
+                        );
+                      }
+                      
+                      return pages;
+                    })()}
                   </div>
                   
                   <button

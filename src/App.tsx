@@ -7,7 +7,10 @@ import { DashboardShowcase } from "@/sections/DashboardShowcase";
 import { ProductOverview } from "@/sections/ProductOverview";
 import { ExperienceGallery } from "@/sections/ExperienceGallery";
 import { ControlPanel } from "@/sections/ControlPanel";
+import { ModesShowcase } from "@/sections/ModesShowcase";
 import { AnalysisSection } from "@/sections/AnalysisSection";
+import { WaveformAnalysisShowcase } from "@/sections/WaveformAnalysisShowcase";
+import { ReportHistorySection } from "@/sections/ReportHistorySection";
 import { AdminSection } from "@/sections/AdminSection";
 import { SupportSection } from "@/sections/SupportSection";
 import { CtaSection } from "@/sections/CtaSection";
@@ -77,7 +80,10 @@ export default function App() {
                 <Features />
                 <DashboardShowcase />
                 <ControlPanel />
+              <ModesShowcase />
               <AnalysisSection />
+              <WaveformAnalysisShowcase />
+              <ReportHistorySection />
               <AdminSection />
               <SupportSection />
               <CtaSection />

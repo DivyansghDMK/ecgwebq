@@ -37,7 +37,7 @@ export function AutoCarousel({
           src={current.src}
           alt={current.alt}
           loading="lazy"
-          className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+          className="absolute inset-0 h-full w-full object-contain object-center p-2"
           initial={{ x: "100%", opacity: 0 }}
           animate={{ x: "0%", opacity: 1 }}
           exit={{ x: "-100%", opacity: 0 }}

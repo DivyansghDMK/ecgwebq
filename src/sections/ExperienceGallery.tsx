@@ -7,25 +7,37 @@ const galleryItems = [
     title: "Admin Control Panel",
     description:
       "Manage users, link reports, and sync access across cloud and local infrastructure with zero downtime provisioning.",
-    image: "/assets/login-screen.jpg"
+    image: "/src/Assets/Login.png"
   },
   {
     title: "Clinical Dashboard Overview",
     description:
       "Monitor patient sessions, review recent reports, and watch live vitals with responsive widgets built for cardiology teams.",
-    image: "/assets/dashboard-overview.jpg"
+    image: "src/Assets/dashboard.png"
   },
   {
     title: "ECG 12-Lead Live Test",
     description:
       "Command center view for acquisition and filtering, featuring BPM, PR, QRS, ST, QT/QTc metrics with demo controls.",
-    image: "/assets/ecg-12-lead.jpg"
+    image: "src/Assets/ControlPanel.png"
   },
   {
     title: "Control Panel Live",
     description:
       "Live control center with attractive real-time visuals and smooth interactions for demos.",
-    image: "/assets/control-panel-live.jpg"
+    image: "src/Assets/Report.png"
+  },
+  {
+    title: "HRV Test - Lead II",
+    description:
+      "Dedicated HRV capture workflow for Lead II with live timing, interval tracking, and long-window waveform collection to support autonomic and rhythm variability review.",
+    image: "/src/Assets/HRVLeadII.png"
+  },
+  {
+    title: "Hyperkalemia Detection Test",
+    description:
+      "Specialized screening view that analyzes Lead II and precordial signals for hyperkalemia-related waveform changes, helping teams inspect T-wave, PR, and QRS behavior in one place.",
+    image: "/src/Assets/Hyperkalmia_Photo.png"
   }
 ];
 
@@ -57,10 +69,10 @@ export function ExperienceGallery() {
                 <div className="overflow-hidden rounded-3xl border border-white/10 bg-black/40">
                   <div className="relative aspect-[16/10] w-full">
                     <img
-                    src={item.image}
+                      src={item.image}
                       alt={item.title}
-                    loading="lazy"
-                      className="absolute inset-0 h-full w-full object-contain sm:object-cover"
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-contain object-center p-2"
                     />
                   </div>
                 </div>

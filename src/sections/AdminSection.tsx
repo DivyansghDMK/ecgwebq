@@ -113,12 +113,11 @@ export function AdminSection() {
           <AutoCarousel
             className="aspect-[16/10] w-full"
             images={[
-              { src: "/assets/ecg-12-lead.jpg", alt: "CardioX device live telemetry" },
-              { src: "/assets/control-panel-live.jpg", alt: "Control panel live mode" },
-              { src: "/assets/control-panel-idle.jpg", alt: "Control panel idle mode" },
-              { src: "/assets/dashboard-overview.jpg", alt: "Clinical dashboard overview" },
-              { src: "/assets/analysis-lead-ii.jpg", alt: "Lead II detailed analysis" },
-              { src: "/assets/login-screen.jpg", alt: "Secure login portal" }
+              { src: "/src/Assets/Dashboard.png", alt: "Clinical dashboard overview" },
+              { src: "/src/Assets/ControlPanel.png", alt: "Control panel live mode" },
+              { src: "/src/Assets/Lead_II.png", alt: "Lead II detailed analysis" },
+              { src: "/src/Assets/Login.png", alt: "Secure login portal" },
+              { src: "/src/Assets/Report.png", alt: "12-lead ECG report view" }
             ]}
             interval={3000}
           />

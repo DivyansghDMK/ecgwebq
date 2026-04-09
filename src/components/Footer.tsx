@@ -33,7 +33,7 @@ const footerLinks: Array<{ heading: string; items: FooterLink[] }> = [
       { label: "Direct: +91 87000 76769", href: "tel:+918700076769" },
       { label: "Company: 1800 309 2499", href: "tel:18003092499" },
       {
-        label: "260, Phase IV, Udyog Vihar, Sector 18, Gurugram, Haryana 122015"
+        label: "683, Udyog Vihar, Phase 5, Gurugram, Haryana 122016, India"
       },
       { label: "deckmount.in", href: "https://deckmount.in/" }
     ]

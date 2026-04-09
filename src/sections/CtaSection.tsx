@@ -47,7 +47,7 @@ export function CtaSection() {
             </a>
           </p>
           <p>
-            <strong>HQ:</strong> 260, Phase IV, Udyog Vihar, Sector 18, Gurugram, Haryana 122015 ·{" "}
+            <strong>HQ:</strong> 683, Udyog Vihar, Phase 5, Gurugram, Haryana 122016 ·{" "}
             <a
               href="https://deckmount.in/"
               target="_blank"
