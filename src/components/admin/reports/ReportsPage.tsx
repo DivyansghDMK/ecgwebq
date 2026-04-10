@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Filter, Download, FileText, Loader2, AlertCircle, X, Eye, EyeOff, Phone } from "lucide-react";
 import { fetchReports, fetchReport } from "../../../api/ecgApi";
-import { downloadPDF, createPDFPreviewURL, generatePDFfromElement } from "../../../utils/pdfGenerator";
 import type { ECGReportMetadata, ReportFilters } from '../../../api/types/ecg';
 export default function ReportsPage() {
   type ReportWithUrl = ECGReportMetadata & { 
@@ -37,16 +36,30 @@ export default function ReportsPage() {
   const [totalReports, setTotalReports] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const reportsPerPage = 20;
+  const activeSearchController = useRef<AbortController | null>(null);
+  const searchRunId = useRef(0);
+  const previousBlobUrl = useRef<string | null>(null);
 
   // Fetch reports function
   const handleSearch = async (page: number = 1) => {
+    activeSearchController.current?.abort();
+    const controller = new AbortController();
+    activeSearchController.current = controller;
+    const runId = searchRunId.current + 1;
+    searchRunId.current = runId;
+
     setLoading(true);
     setError(null);
     setSelectedReport(null);
     setPdfPreviewUrl(null);
 
     try {
-      const response = await fetchReports(filters, page, reportsPerPage);
+      const response = await fetchReports(filters, page, reportsPerPage, controller.signal);
+
+      if (controller.signal.aborted || searchRunId.current !== runId) {
+        return;
+      }
+
       setReports(response.data || []);
       setTotalReports(response.metadata?.total || 0);
       setTotalPages(response.metadata?.totalPages || 0);
@@ -60,10 +73,21 @@ export default function ReportsPage() {
         setError(null); // Clear any previous errors
       }
     } catch (err: any) {
+      if (controller.signal.aborted || err?.name === "AbortError" || searchRunId.current !== runId) {
+        return;
+      }
+
       setError(err.message || "Failed to fetch reports. Please try again.");
       setReports([]);
+      setTotalReports(0);
+      setTotalPages(0);
     } finally {
-      setLoading(false);
+      if (searchRunId.current === runId) {
+        setLoading(false);
+        if (activeSearchController.current === controller) {
+          activeSearchController.current = null;
+        }
+      }
     }
   };
 
@@ -120,10 +144,33 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
       }
     }
     
-    setPdfPreviewUrl(currentReport.pdfUrl || null);
+    if (previousBlobUrl.current) {
+      URL.revokeObjectURL(previousBlobUrl.current);
+      previousBlobUrl.current = null;
+    }
     
-    // If it's a JSON file, load its content from the presigned URL (jsonUrl)
-    if (currentReport.type === 'JSON' && currentReport.jsonUrl) {
+    if (currentReport.pdfUrl) {
+      setGeneratingPDF(true);
+      fetch(currentReport.pdfUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          const url = URL.createObjectURL(pdfBlob);
+          previousBlobUrl.current = url;
+          setPdfPreviewUrl(url);
+        })
+        .catch(err => {
+          setPdfPreviewUrl(currentReport.pdfUrl || null);
+        })
+        .finally(() => {
+          setGeneratingPDF(false);
+        });
+    } else {
+      setPdfPreviewUrl(null);
+    }
+    
+    // Load live JSON details when the API provides them, even if the preview is a PDF.
+    if (currentReport.jsonUrl) {
       setLoadingJson(true);
       try {
         const response = await fetch(currentReport.jsonUrl);
@@ -132,10 +179,12 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
         }
         const jsonData = await response.json();
         setJsonContent(jsonData);
-        // Also update the report's ecg field if it wasn't already loaded
-        if (!currentReport.ecg) {
-          currentReport.ecg = jsonData;
-        }
+        const updatedReport = {
+          ...currentReport,
+          ecg: currentReport.ecg || jsonData?.ecg || jsonData,
+        };
+        setSelectedReport(updatedReport);
+        setReports(prev => prev.map(r => r.id === report.id ? updatedReport : r));
       } catch (err) {
         // Failed to load JSON content
       } finally {
@@ -163,11 +212,32 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
   // Handle PDF preview (separate from download)
   const handlePreviewPDF = () => {
     if (selectedReport?.pdfUrl) {
-      setPdfPreviewUrl(selectedReport.pdfUrl);
+      setGeneratingPDF(true);
+      fetch(selectedReport.pdfUrl)
+        .then(res => res.blob())
+        .then(blob => {
+          if (previousBlobUrl.current) {
+            URL.revokeObjectURL(previousBlobUrl.current);
+          }
+          const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+          const url = URL.createObjectURL(pdfBlob);
+          previousBlobUrl.current = url;
+          setPdfPreviewUrl(url);
+        })
+        .catch(err => {
+          setPdfPreviewUrl(selectedReport.pdfUrl || null);
+        })
+        .finally(() => {
+          setGeneratingPDF(false);
+        });
     }
   };
   // Clear filters
   const handleClearFilters = () => {
+    activeSearchController.current?.abort();
+    activeSearchController.current = null;
+    searchRunId.current += 1;
+
     setFilters({
       name: "",
       phone: "",
@@ -177,9 +247,15 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
     });
     setCurrentPage(1);
     setReports([]);
+    setTotalReports(0);
+    setTotalPages(0);
     setSelectedReport(null);
     setPdfPreviewUrl(null);
+    setJsonContent(null);
+    setLoadingJson(false);
+    setGeneratingPDF(false);
     setError(null);
+    setLoading(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -459,11 +535,11 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                     selectedReport?.id === report.id ? "bg-emerald-50 dark:bg-emerald-900/30" : "odd:bg-white dark:bg-slate-900 even:bg-slate-50 dark:even:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
                   }`}
                 >
-                  <div className="p-3 text-slate-900 dark:text-slate-50 font-medium">{report.patientName || report.name || report.patient?.name || "Unnamed Report"}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200 border-x border-slate-200 dark:border-slate-700">{report.patient?.phone || report.phoneNumber || "N/A"}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200">{report.deviceId || "N/A"}</div>
+                  <div className="p-3 text-slate-900 dark:text-slate-50 font-medium">{report.patientName || report.name || report.patient?.name}</div>
+                  <div className="p-3 text-slate-700 dark:text-slate-200 border-x border-slate-200 dark:border-slate-700">{report.patient?.phone || report.phoneNumber}</div>
+                  <div className="p-3 text-slate-700 dark:text-slate-200">{report.deviceId}</div>
                   <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{formatDate(report.timestamp || report.date || "")}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{report.type || "-"}</div>
+                  <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{report.type}</div>
                 </div>
               ))
             )}
@@ -605,8 +681,8 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-700 dark:text-slate-300">Org: {selectedReport.ecg?.patient.org || '-'}</p>
-                      <p className="text-sm text-slate-700 dark:text-slate-300">Phone No: {selectedReport.ecg?.patient.phone || selectedReport.phoneNumber || '-'}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">Org: {selectedReport.ecg?.patient?.org || '-'}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">Phone No: {selectedReport.ecg?.patient?.phone || selectedReport.phoneNumber || '-'}</p>
                     </div>
                     <h4 className="text-2xl font-bold text-gray-900 dark:text-slate-50">ECG Report</h4>
                     <div className="w-28" />
@@ -641,15 +717,15 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                       <div className="grid grid-cols-3">
                         <div className="border-r border-gray-300 p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">Maximum Heart Rate:</div>
-                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics.overview?.maxHR ?? '-'}</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics?.overview?.maxHR ?? '-'}</div>
                         </div>
                         <div className="border-r border-gray-300 p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">Minimum Heart Rate:</div>
-                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics.overview?.minHR ?? '-'}</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics?.overview?.minHR ?? '-'}</div>
                         </div>
                         <div className="p-3">
                           <div className="font-semibold text-slate-800 dark:text-slate-200">Average Heart Rate:</div>
-                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics.overview?.avgHR ?? '-'}</div>
+                          <div className="text-slate-700 dark:text-slate-300">{selectedReport.ecg?.metrics?.overview?.avgHR ?? '-'}</div>
                         </div>
                       </div>
                     </div>
@@ -663,7 +739,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                         <div className="p-2 font-semibold text-slate-800 dark:text-slate-200 border-x border-gray-300">Observed Values</div>
                         <div className="p-2 font-semibold text-slate-800 dark:text-slate-200">Standard Range</div>
                       </div>
-                      {(selectedReport.ecg?.metrics.observation || []).map((row: any, i: number) => (
+                      {(selectedReport.ecg?.metrics?.observation || []).map((row: any, i: number) => (
                         <div key={i} className="grid grid-cols-3 border-t border-gray-300">
                           <div className="p-2 text-slate-700 dark:text-slate-300">{row.name}</div>
                           <div className="p-2 text-slate-700 dark:text-slate-300 border-x border-gray-300">{row.value}</div>
@@ -680,7 +756,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                         <div className="col-span-2 p-2 font-semibold text-slate-800 dark:text-slate-200">S.No.</div>
                         <div className="col-span-10 p-2 font-semibold text-slate-800 dark:text-slate-200">Conclusion</div>
                       </div>
-                      {(selectedReport.ecg?.metrics.conclusions || []).map((text: string, idx: number) => (
+                      {(selectedReport.ecg?.metrics?.conclusions || []).map((text: string, idx: number) => (
                         <div key={idx} className="grid grid-cols-12 border-t border-gray-300">
                           <div className="col-span-2 p-2 text-slate-700 dark:text-slate-300">{idx + 1}</div>
                           <div className="col-span-10 p-2 text-slate-700 dark:text-slate-300">{text}</div>
@@ -780,8 +856,6 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
       <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
         <div className="flex flex-wrap gap-4">
           <div>Generated: {formatDate(new Date().toISOString())}</div>
-          <div>Mode: {(import.meta.env as any).VITE_USE_MOCK_DATA === 'true' ? 'Mock Data (Testing)' : 'Live API'}</div>
-          <div>API: {(import.meta.env as any).VITE_ADMIN_PROTECTED_API_BASE_URL || (import.meta.env as any).VITE_API_BASE_URL || 'http://localhost:3000/api'}</div>
           <div>Document Version: v1.0</div>
         </div>
       </div>

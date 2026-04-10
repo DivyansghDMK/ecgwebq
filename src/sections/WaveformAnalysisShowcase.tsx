@@ -2,33 +2,38 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+const waveformAnalysisImage = new URL("../Assets/Waveform_Analysis.png", import.meta.url).href;
+const rulerImage = new URL("../Assets/ruler.png", import.meta.url).href;
+const caliperImage = new URL("../Assets/caliper.png", import.meta.url).href;
+const annotateImage = new URL("../Assets/annotate.png", import.meta.url).href;
+
 const reviewTools = [
   {
     title: "Magnified Signal Review",
     description:
       "Zoom into waveform segments to inspect local signal morphology, isolate beat-level changes, and support manual validation during report review.",
-    image: "/src/Assets/Waveform_Analysis.png",
+    image: waveformAnalysisImage,
     caption: "Magnifier mode"
   },
   {
     title: "Ruler-Based Measurement",
     description:
       "Measure intervals and amplitudes directly on fetched ECG data with visual rulers that help clinicians validate RR, PR, and QRS timing by hand.",
-    image: "/src/Assets/ruler.png",
+    image: rulerImage,
     caption: "Ruler tool"
   },
   {
     title: "Caliper Precision Reading",
     description:
       "Use digital calipers for quick manual reading of rhythm spacing and waveform width when a second look is needed before final interpretation.",
-    image: "/src/Assets/caliper.png",
+    image: caliperImage,
     caption: "Caliper tool"
   },
   {
     title: "Manual Annotation Workflow",
     description:
       "Mark suspicious segments, add clinician notes, and save review decisions on top of API-fetched reports for richer downstream analysis.",
-    image: "/src/Assets/annotate.png",
+    image: annotateImage,
     caption: "Annotate mode"
   }
 ];
@@ -42,7 +47,7 @@ const workflowPoints = [
 
 export function WaveformAnalysisShowcase() {
   return (
-    <section id="waveform-analysis" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="waveform-analysis" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 max-w-3xl space-y-4">
         <Badge className="uppercase tracking-[0.4em]">Waveform Analysis</Badge>
         <h2 className="section-heading">
@@ -81,7 +86,7 @@ export function WaveformAnalysisShowcase() {
           <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
             <div className="relative aspect-[16/10] w-full">
               <img
-                src="/src/Assets/Waveform_Analysis.png"
+                src={waveformAnalysisImage}
                 alt="Waveform analysis workspace with magnifier, ruler, caliper, and annotation tools"
                 loading="lazy"
                 className="absolute inset-0 h-full w-full object-contain object-center p-2"

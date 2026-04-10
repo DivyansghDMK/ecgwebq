@@ -43,7 +43,7 @@ const footerLinks: Array<{ heading: string; items: FooterLink[] }> = [
 export function Footer() {
   return (
     <footer className="mt-24 border-t border-white/10 bg-slate-950/80 backdrop-blur-lg">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-6 py-14 md:flex-row md:items-start md:justify-between">
+      <div className="mx-auto flex w-full max-w-[100rem] flex-col gap-12 px-6 py-14 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm space-y-6">
           <Logo />
           <p className="text-sm text-white/60">

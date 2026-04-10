@@ -10,6 +10,12 @@ import {
 } from "@/components/ui/card";
 import { AutoCarousel } from "@/components/AutoCarousel";
 
+const dashboardImage = new URL("../Assets/Dashboard.png", import.meta.url).href;
+const controlPanelImage = new URL("../Assets/ControlPanel.png", import.meta.url).href;
+const leadImage = new URL("../Assets/Lead_II.png", import.meta.url).href;
+const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
+const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
+
 const deviceStats = [
   { label: "Sampling Rate", value: "500 sps / lead" },
   { label: "ADC Resolution", value: "12–16 bit" },
@@ -81,7 +87,7 @@ const deviceFeatures = [
 
 export function AdminSection() {
   return (
-    <section id="device" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="device" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-3xl space-y-4">
           <Badge className="uppercase tracking-[0.4em]">Device Feature Map</Badge>
@@ -113,11 +119,11 @@ export function AdminSection() {
           <AutoCarousel
             className="aspect-[16/10] w-full"
             images={[
-              { src: "/src/Assets/Dashboard.png", alt: "Clinical dashboard overview" },
-              { src: "/src/Assets/ControlPanel.png", alt: "Control panel live mode" },
-              { src: "/src/Assets/Lead_II.png", alt: "Lead II detailed analysis" },
-              { src: "/src/Assets/Login.png", alt: "Secure login portal" },
-              { src: "/src/Assets/Report.png", alt: "12-lead ECG report view" }
+              { src: dashboardImage, alt: "Clinical dashboard overview" },
+              { src: controlPanelImage, alt: "Control panel live mode" },
+              { src: leadImage, alt: "Lead II detailed analysis" },
+              { src: loginImage, alt: "Secure login portal" },
+              { src: reportImage, alt: "12-lead ECG report view" }
             ]}
             interval={3000}
           />

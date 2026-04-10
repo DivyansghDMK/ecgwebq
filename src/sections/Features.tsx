@@ -42,7 +42,7 @@ const featureData = [
 
 export function Features() {
   return (
-    <section id="features" className="relative mx-auto max-w-6xl px-6 py-24">
+    <section id="features" className="relative mx-auto w-full max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 max-w-3xl">
         <Badge variant="neutral" className="uppercase tracking-[0.4em] text-white/80">
           Engineered for cardiology teams

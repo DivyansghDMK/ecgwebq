@@ -2,48 +2,55 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
+const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
+const dashboardImage = new URL("../Assets/Dashboard.png", import.meta.url).href;
+const controlPanelImage = new URL("../Assets/ControlPanel.png", import.meta.url).href;
+const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
+const hrvImage = new URL("../Assets/HRVLeadII.png", import.meta.url).href;
+const hyperkalemiaImage = new URL("../Assets/Hyperkalmia_Photo.png", import.meta.url).href;
+
 const galleryItems = [
   {
     title: "Admin Control Panel",
     description:
       "Manage users, link reports, and sync access across cloud and local infrastructure with zero downtime provisioning.",
-    image: "/src/Assets/Login.png"
+    image: loginImage
   },
   {
     title: "Clinical Dashboard Overview",
     description:
       "Monitor patient sessions, review recent reports, and watch live vitals with responsive widgets built for cardiology teams.",
-    image: "src/Assets/dashboard.png"
+    image: dashboardImage
   },
   {
     title: "ECG 12-Lead Live Test",
     description:
       "Command center view for acquisition and filtering, featuring BPM, PR, QRS, ST, QT/QTc metrics with demo controls.",
-    image: "src/Assets/ControlPanel.png"
+    image: controlPanelImage
   },
   {
     title: "Control Panel Live",
     description:
       "Live control center with attractive real-time visuals and smooth interactions for demos.",
-    image: "src/Assets/Report.png"
+    image: reportImage
   },
   {
     title: "HRV Test - Lead II",
     description:
       "Dedicated HRV capture workflow for Lead II with live timing, interval tracking, and long-window waveform collection to support autonomic and rhythm variability review.",
-    image: "/src/Assets/HRVLeadII.png"
+    image: hrvImage
   },
   {
     title: "Hyperkalemia Detection Test",
     description:
       "Specialized screening view that analyzes Lead II and precordial signals for hyperkalemia-related waveform changes, helping teams inspect T-wave, PR, and QRS behavior in one place.",
-    image: "/src/Assets/Hyperkalmia_Photo.png"
+    image: hyperkalemiaImage
   }
 ];
 
 export function ExperienceGallery() {
   return (
-    <section id="gallery" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="gallery" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 max-w-3xl space-y-4">
         <Badge className="uppercase tracking-[0.4em]">Experience CardioX</Badge>
         <h2 className="section-heading">

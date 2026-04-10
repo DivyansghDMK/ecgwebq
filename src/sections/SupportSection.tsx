@@ -38,7 +38,7 @@ const supportServices = [
 
 export function SupportSection() {
   return (
-    <section id="support" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="support" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="max-w-3xl space-y-4">
           <Badge className="uppercase tracking-[0.4em]">Assistance & Support</Badge>

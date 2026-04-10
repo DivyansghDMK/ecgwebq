@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
+const dashboardImage = new URL("../Assets/Dashboard.png", import.meta.url).href;
+
 const metrics = [
   { label: "HR", value: "60 BPM" },
   { label: "PR", value: "160 ms" },
@@ -37,7 +39,7 @@ const reports = [
 
 export function DashboardShowcase() {
   return (
-    <section id="dashboard" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="dashboard" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
         <div className="max-w-xl space-y-6">
           <Badge className="uppercase tracking-[0.4em]">
@@ -103,7 +105,7 @@ export function DashboardShowcase() {
                 <div className="mt-4 w-full overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60">
                   <div className="relative aspect-[16/10] w-full">
                     <img
-                      src="/src/Assets/dashboard.png"
+                      src={dashboardImage}
                       alt="ECG dashboard overview"
                       loading="lazy"
                       className="absolute inset-0 h-full w-full object-contain object-center p-2"

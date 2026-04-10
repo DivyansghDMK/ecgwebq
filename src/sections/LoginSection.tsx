@@ -34,7 +34,7 @@ export function LoginSection() {
   ];
 
   return (
-    <section id="login-section" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="login-section" className="mx-auto w/full max-w-[100rem] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -51,7 +51,7 @@ export function LoginSection() {
         </p>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="mx-auto grid max-w-6xl xl:max-w-7xl grid-cols-1 gap-6 lg:grid-cols-2">
         {loginOptions.map((option, index) => {
           const Icon = option.icon;
           return (

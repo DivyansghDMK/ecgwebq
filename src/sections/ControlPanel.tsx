@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
+
 const controlFeatures = [
   {
     title: "Precision Controls",
@@ -24,7 +26,7 @@ const controlFeatures = [
 
 export function ControlPanel() {
   return (
-    <section id="control" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="control" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-3xl space-y-4">
           <Badge className="uppercase tracking-[0.4em]">ECG Control Panel</Badge>
@@ -69,7 +71,7 @@ export function ControlPanel() {
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
                 <div className="relative aspect-[16/10] w-full">
                   <img
-                    src="src/Assets/Report.png"
+                    src={reportImage}
                     alt="CardioX control panel live mode"
                     loading="lazy"
                     className="absolute inset-0 h-full w-full rounded-2xl object-contain object-center p-2"

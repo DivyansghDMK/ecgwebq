@@ -123,116 +123,232 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 /* ======================= REPORTS ======================= */
 
-export async function fetchReports(filters?: ReportFilters, page: number = 1, limit: number = 20): Promise<ReportsResponse> {
-    try {
-        // Use S3 Files API instead of doctor reports
-        const response = await fetchS3Files(page, limit, filters?.name || '');
-        
-        // Transform S3 files to report format
-        const transformedReports = response.files.map((file: any) => {
-            // Extract patient name and device info from file path/name
-            const pathParts = file.key.split('/');
-            const fileName = pathParts[pathParts.length - 1];
-            const patientName = fileName.replace('.pdf', '').replace('.json', '').replace(/_/g, ' ');
-            
-            // Try to extract device ID from path or filename
-            let deviceId = 'Unknown';
-            const deviceMatch = file.key.match(/device[_-]?(\w+)/i) || fileName.match(/device[_-]?(\w+)/i);
-            if (deviceMatch) {
-                deviceId = deviceMatch[1];
-            }
-            
-            return {
-                id: file.key,
-                recordId: file.key,
-                patientName: patientName,
-                deviceId: deviceId,
-                date: file.lastModified,
-                timestamp: file.lastModified,
-                hasPdf: file.type === 'application/pdf',
-                type: file.type === 'application/pdf' ? 'PDF' : 'JSON',
-                // Add ECGReportMetadata fields
-                patient: {
-                    id: file.key,
-                    name: patientName,
-                    phone: undefined
-                },
-                createdAt: file.lastModified,
-                fileSize: file.size,
-                // Add S3 file data for preview functionality
-                pdfUrl: file.url,
-                jsonUrl: file.type === 'application/json' ? file.url : undefined,
-                ecg: null // Will be loaded when needed
-            };
-        });
-        
-        // Apply additional filters if provided
-        let filteredReports = transformedReports;
-        if (filters) {
-            filteredReports = transformedReports.filter((report: any) => {
-                if (filters.name && !report.patientName?.toLowerCase().includes(filters.name.toLowerCase())) {
-                    return false;
-                }
-                if (filters.phone && !report.patient?.phone?.includes(filters.phone)) {
-                    return false;
-                }
-                if (filters.deviceId && !report.deviceId?.toLowerCase().includes(filters.deviceId.toLowerCase())) {
-                    return false;
-                }
-                if (filters.startDate && report.timestamp) {
-                    const reportDate = new Date(report.timestamp);
-                    const startDate = new Date(filters.startDate);
-                    if (reportDate < startDate) return false;
-                }
-                if (filters.endDate && report.timestamp) {
-                    const reportDate = new Date(report.timestamp);
-                    const endDate = new Date(filters.endDate);
-                    endDate.setHours(23, 59, 59, 999);
-                    if (reportDate > endDate) return false;
-                }
-                return true;
-            });
-        }
-        
-        return { 
-            success: true, 
-            data: filteredReports, 
-            metadata: { 
-                total: response.pagination?.total || filteredReports.length,
-                filtered: filteredReports.length,
-                page: page,
-                limit: limit,
-                totalPages: response.pagination?.totalPages || Math.ceil(filteredReports.length / limit)
-            } 
-        };
-        
-    } catch (error) {
-        throw error;
-    }
+export async function fetchReports(
+  filters?: ReportFilters,
+  page: number = 1,
+  limit: number = 20,
+  signal?: AbortSignal
+): Promise<ReportsResponse> {
+  const hasFilters = Boolean(
+    filters?.name?.trim() ||
+    filters?.phone?.trim() ||
+    filters?.deviceId?.trim() ||
+    filters?.startDate?.trim() ||
+    filters?.endDate?.trim()
+  );
+
+  if (!hasFilters) {
+    const response = await fetchS3Files(page, limit, '', signal);
+    const reports = response.files.map(normalizeReportMetadata);
+    const total = response.pagination?.total ?? reports.length;
+    const currentLimit = response.pagination?.limit ?? limit;
+
+    return {
+      success: true,
+      data: reports,
+      metadata: {
+        total,
+        filtered: reports.length,
+        page: response.pagination?.page ?? page,
+        limit: currentLimit,
+        totalPages: response.pagination?.totalPages ?? Math.max(1, Math.ceil(total / currentLimit)),
+      },
+    };
+  }
+
+  const searchTerm = (filters?.name?.trim() || filters?.phone?.trim() || filters?.deviceId?.trim() || '').toLowerCase();
+  const allFiles = await fetchAllS3Files(searchTerm, signal);
+  const filteredReports = applyReportFilters(allFiles.map(normalizeReportMetadata), filters);
+  const currentLimit = limit;
+  const total = filteredReports.length;
+  const paginatedReports = filteredReports.slice((page - 1) * currentLimit, page * currentLimit);
+
+  return {
+    success: true,
+    data: paginatedReports,
+    metadata: {
+      total,
+      filtered: total,
+      page,
+      limit: currentLimit,
+      totalPages: Math.max(1, Math.ceil(total / currentLimit)),
+    },
+  };
 }
 
 export async function fetchReport(recordId: string): Promise<ReportUrlsResponse> {
-    try {
-        // Get the file from S3 files to get the URL
-        const s3Files = await fetchS3Files(1, 100, '');
-        const file = s3Files.files.find((f: any) => f.key === recordId);
-        
-        if (!file) {
-            throw new Error('File not found');
-        }
-        
-        return {
-            success: true,
-            data: {
-                jsonUrl: file.type === 'application/json' ? (file.url || '') : '',
-                pdfUrl: file.type === 'application/pdf' ? (file.url || null) : null,
-                expiresIn: 300, // 5 minutes
-                generatedAt: new Date().toISOString()
-            }
-        };
-    } catch (error) {
-        throw error;
+  const s3Files = await fetchAllS3Files(recordId);
+  const file = s3Files.find((item) => item.key === recordId || item.recordId === recordId || item.name === recordId);
+
+  if (!file) {
+    throw new Error('File not found');
+  }
+
+  const normalized = normalizeReportMetadata(file);
+
+  return {
+    success: true,
+    data: {
+      jsonUrl: normalized.jsonUrl || '',
+      pdfUrl: normalized.pdfUrl || null,
+      expiresIn: 300,
+      generatedAt: new Date().toISOString(),
+    },
+  };
+}
+
+async function fetchAllS3Files(searchTerm: string = '', signal?: AbortSignal): Promise<S3File[]> {
+  const pageLimit = 100;
+  const firstPage = await fetchS3Files(1, pageLimit, searchTerm, signal);
+  const allFiles = [...(firstPage.files || [])];
+  const totalPages = firstPage.pagination?.totalPages || 1;
+  const resolvedLimit = firstPage.pagination?.limit || pageLimit;
+
+  const maxConcurrency = 5;
+  for (let startPage = 2; startPage <= totalPages; startPage += maxConcurrency) {
+    if (signal?.aborted) {
+      throw new DOMException('Search cancelled', 'AbortError');
     }
+    const promises = [];
+    for (let offset = 0; offset < maxConcurrency; offset++) {
+      const p = startPage + offset;
+      if (p <= totalPages) {
+        promises.push(fetchS3Files(p, resolvedLimit, searchTerm, signal));
+      }
+    }
+    const results = await Promise.all(promises);
+    results.forEach((res) => {
+      allFiles.push(...(res.files || []));
+    });
+  }
+
+  return allFiles;
+}
+
+function normalizeReportMetadata(raw: any): ECGReportMetadata {
+  const ecg = raw?.ecg ?? raw?.report?.ecg ?? raw?.data?.ecg ?? null;
+  const patient = raw?.patient ?? ecg?.patient ?? {};
+  const recordId = String(raw?.recordId ?? raw?.record_id ?? raw?.recordID ?? ecg?.recordId ?? raw?.id ?? raw?.key ?? '');
+  const key = String(raw?.key ?? raw?.fileKey ?? raw?.file_key ?? recordId);
+  const fileName = String(raw?.fileName ?? raw?.filename ?? raw?.name ?? key.split('/').pop() ?? '');
+  const fileType = raw?.type ?? raw?.contentType ?? raw?.content_type ?? '';
+  const rawType = fileType || raw?.reportType || raw?.report_type || '';
+  const type = normalizeReportType(rawType);
+  const rawPdfUrl = raw?.pdfUrl ?? raw?.pdf_url ?? raw?.presignedPdfUrl ?? raw?.pdf?.url ?? (type === 'PDF' ? raw?.url : undefined);
+  const rawJsonUrl = raw?.jsonUrl ?? raw?.json_url ?? raw?.presignedJsonUrl ?? raw?.json?.url ?? (type === 'JSON' ? raw?.url : undefined);
+  const pdfUrl = rawPdfUrl ? String(rawPdfUrl) : undefined;
+  const jsonUrl = rawJsonUrl ? String(rawJsonUrl) : undefined;
+  const timestamp = raw?.timestamp ?? raw?.lastModified ?? raw?.last_modified ?? raw?.createdAt ?? raw?.created_at ?? raw?.date ?? ecg?.timestamp ?? '';
+  const patientName =
+    raw?.patientName ??
+    raw?.patient_name ??
+    raw?.reportName ??
+    raw?.report_name ??
+    raw?.displayName ??
+    raw?.display_name ??
+    raw?.title ??
+    patient?.name ??
+    ecg?.patient?.name ??
+    fileName;
+
+  return {
+    id: String(raw?.id ?? recordId),
+    recordId,
+    patientName: String(patientName || ''),
+    name: String(patientName || ''),
+    deviceId: String(raw?.deviceId ?? raw?.device_id ?? raw?.device ?? ecg?.deviceId ?? ''),
+    date: String(raw?.date ?? timestamp),
+    timestamp: String(timestamp),
+    hasPdf: Boolean(raw?.hasPdf ?? raw?.has_pdf ?? pdfUrl),
+    type: type || String(fileType || ''),
+    patient: {
+      id: String(patient?.id ?? recordId),
+      name: String(patientName || ''),
+      phone: patient?.phone ?? raw?.phone ?? raw?.phoneNumber ?? raw?.phone_number,
+      phoneNumber: patient?.phoneNumber ?? patient?.phone_number ?? raw?.phoneNumber ?? raw?.phone_number,
+    },
+    createdAt: String(raw?.createdAt ?? raw?.created_at ?? timestamp),
+    fileSize: Number(raw?.fileSize ?? raw?.file_size ?? raw?.size ?? 0),
+    pdfUrl,
+    jsonUrl,
+    ecg,
+  };
+}
+
+function normalizeReportType(value: string): string {
+  const normalized = String(value || '').toLowerCase();
+
+  if (normalized.includes('pdf')) return 'PDF';
+  if (normalized.includes('json')) return 'JSON';
+
+  return value ? String(value).toUpperCase() : '';
+}
+
+function applyReportFilters(reports: ECGReportMetadata[], filters?: ReportFilters): ECGReportMetadata[] {
+  if (!filters) return reports;
+
+  const name = filters.name?.trim().toLowerCase();
+  const phone = filters.phone?.trim().toLowerCase();
+  const deviceId = filters.deviceId?.trim().toLowerCase();
+  const startDate = parseFilterDate(filters.startDate, false);
+  const endDate = parseFilterDate(filters.endDate, true);
+
+  return reports.filter((report) => {
+    const searchableName = [
+      report.patientName,
+      report.name,
+      report.patient?.name,
+      report.recordId,
+      report.id,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const searchablePhone = [
+      report.patient?.phone,
+      report.patient?.phoneNumber,
+      (report as any).phoneNumber,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const searchableDevice = [
+      report.deviceId,
+      report.recordId,
+      report.id,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const reportDateValue = report.timestamp || report.date || report.createdAt;
+    const reportDate = reportDateValue ? new Date(reportDateValue) : null;
+
+    if (name && !searchableName.includes(name)) return false;
+    if (phone && !searchablePhone.includes(phone)) return false;
+    if (deviceId && !searchableDevice.includes(deviceId)) return false;
+    if (startDate && (!reportDate || reportDate < startDate)) return false;
+    if (endDate && (!reportDate || reportDate > endDate)) return false;
+
+    return true;
+  });
+}
+
+function parseFilterDate(value: string | undefined, endOfDay: boolean): Date | null {
+  if (!value?.trim()) return null;
+
+  const trimmed = value.trim();
+  const isoDate = new Date(`${trimmed}T${endOfDay ? '23:59:59.999' : '00:00:00'}`);
+  if (!Number.isNaN(isoDate.getTime())) {
+    return isoDate;
+  }
+
+  const localParts = trimmed.match(/^(\d{1,2})\s*[-/]\s*(\d{1,2})\s*[-/]\s*(\d{4})$/);
+  if (!localParts) return null;
+
+  const [, day, month, year] = localParts;
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0
+  );
 }
 
 /* ======================= S3 FILE BROWSER ======================= */
@@ -240,14 +356,18 @@ export async function fetchReport(recordId: string): Promise<ReportUrlsResponse>
 export async function fetchS3Files(
   page: number = 1,
   limit: number = 50,
-  search: string = ''
+  search: string = '',
+  signal?: AbortSignal
 ): Promise<S3FilesResponse> {
   const params = new URLSearchParams();
   params.append('page', page.toString());
   params.append('limit', limit.toString());
   if (search) params.append('search', search);
 
-  const response = await apiRequest<{ success: boolean; data: S3FilesResponse } | S3FilesResponse>(`${ADMIN_ROUTES.s3Files}?${params.toString()}`);
+  const response = await apiRequest<{ success: boolean; data: S3FilesResponse } | S3FilesResponse>(
+    `${ADMIN_ROUTES.s3Files}?${params.toString()}`,
+    { signal }
+  );
   if ('data' in response && response.data) {
     return response.data;
   }

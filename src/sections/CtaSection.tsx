@@ -6,7 +6,7 @@ export function CtaSection() {
   return (
     <section
       id="cta"
-      className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[40px] border border-brand-orange/40 bg-gradient-to-br from-brand-orange/60 via-brand-electric/30 to-brand-orange/10 px-6 py-20 text-white shadow-[0_0_120px_rgba(255,138,61,0.28)]"
+      className="relative mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[80rem] overflow-hidden rounded-[40px] border border-brand-orange/40 bg-gradient-to-br from-brand-orange/60 via-brand-electric/30 to-brand-orange/10 px-6 py-20 text-white shadow-[0_0_120px_rgba(255,138,61,0.28)]"
     >
       <motion.div
         initial={{ opacity: 0, y: 30 }}

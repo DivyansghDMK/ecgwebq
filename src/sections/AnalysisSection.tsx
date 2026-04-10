@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+const leadImage = new URL("../Assets/Lead_II.png", import.meta.url).href;
+
 const analysisMetrics = [
   {
     label: "Heart Rate",
@@ -27,7 +29,7 @@ const analysisMetrics = [
 
 export function AnalysisSection() {
   return (
-    <section id="analysis" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="analysis" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 max-w-3xl space-y-4">
         <Badge className="uppercase tracking-[0.4em]">Live PQRS Analysis</Badge>
         <h2 className="section-heading">
@@ -55,7 +57,7 @@ export function AnalysisSection() {
             <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
               <div className="relative aspect-[16/10] w-full md:aspect-[16/9]">
                 <img
-                  src="src/Assets/Lead_II.png"
+                  src={leadImage}
                   alt="Lead II waveform analysis screen"
                   loading="lazy"
                   className="absolute inset-0 h-full w-full object-contain object-center p-2"

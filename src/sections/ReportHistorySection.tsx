@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
+const reportHistoryImage = new URL("../Assets/Report_History.png", import.meta.url).href;
+
 const historyHighlights = [
   "Search reports by patient name and quickly reopen prior ECG sessions",
   "Preview records before opening the full report or sending for review",
@@ -10,7 +12,7 @@ const historyHighlights = [
 
 export function ReportHistorySection() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-20">
+    <section className="mx-auto max-w-[100rem] px-6 py-20 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.85fr]">
         <motion.div
           className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
@@ -25,7 +27,7 @@ export function ReportHistorySection() {
           <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
             <div className="relative aspect-[16/10] w-full">
               <img
-                src="/src/Assets/Report_History.png"
+                src={reportHistoryImage}
                 alt="ECG report history view with search, table, and preview panel"
                 loading="lazy"
                 className="absolute inset-0 h-full w-full object-contain object-center p-2"

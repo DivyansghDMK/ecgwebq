@@ -2,6 +2,13 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+const mode121Light = new URL("../Assets/121LightMode.png", import.meta.url).href;
+const mode121Dark = new URL("../Assets/121_dARKmODE.png", import.meta.url).href;
+const mode121Graph = new URL("../Assets/121GraphMode.png", import.meta.url).href;
+const mode62Light = new URL("../Assets/62LightMode.png", import.meta.url).href;
+const mode62Dark = new URL("../Assets/62DarkMode.png", import.meta.url).href;
+const mode62Graph = new URL("../Assets/62GraphMode.png", import.meta.url).href;
+
 const modeGroups = [
   {
     id: "12x1",
@@ -17,17 +24,17 @@ const modeGroups = [
     variants: [
       {
         title: "Light Mode",
-        image: "/src/Assets/121LightMode.png",
+        image: mode121Light,
         caption: "Bright clinical canvas for clear day-shift review"
       },
       {
         title: "Dark Mode",
-        image: "/src/Assets/121_dARKmODE.png",
+        image: mode121Dark,
         caption: "Reduced glare for focused long-session monitoring"
       },
       {
         title: "Graph Mode",
-        image: "/src/Assets/121GraphMode.png",
+        image: mode121Graph,
         caption: "ECG-paper style overlay for manual trace interpretation"
       }
     ]
@@ -46,17 +53,17 @@ const modeGroups = [
     variants: [
       {
         title: "Light Mode",
-        image: "/src/Assets/62LightMode.png",
+        image: mode62Light,
         caption: "High-clarity layout for broad lead comparison"
       },
       {
         title: "Dark Mode",
-        image: "/src/Assets/62DarkMode.png",
+        image: mode62Dark,
         caption: "Comfortable low-glare monitoring for longer sessions"
       },
       {
         title: "Graph Mode",
-        image: "/src/Assets/62GraphMode.png",
+        image: mode62Graph,
         caption: "Grid-backed review for measurement-friendly interpretation"
       }
     ]
@@ -65,7 +72,7 @@ const modeGroups = [
 
 export function ModesShowcase() {
   return (
-    <section id="modes" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="modes" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="mb-12 max-w-3xl space-y-4">
         <Badge className="uppercase tracking-[0.4em]">Display Modes</Badge>
         <h2 className="section-heading">

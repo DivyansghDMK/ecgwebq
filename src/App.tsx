@@ -72,7 +72,7 @@ export default function App() {
           element={
             <>
               <Navbar />
-              <main className="flex flex-col gap-6">
+              <main className="flex flex-col gap-6 w-full">
                 <ScrollToHash />
                 <Hero />
                 <ExperienceGallery />

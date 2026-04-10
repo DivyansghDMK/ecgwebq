@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CardioX3DModel } from "@/components/CardioX3DModel";
 
+const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
+
 export function Hero() {
   return (
     <section
@@ -20,16 +22,16 @@ export function Hero() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.9 }}
-        className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-12 px-6 text-center"
+        className="relative mx-auto flex w-full max-w-[100rem] flex-col items-center gap-12 px-6 text-center lg:px-8"
       >
         <Badge className="uppercase tracking-[0.4em]">
           Built to Detect. Designed to Last.
         </Badge>
         <div className="space-y-6">
-          <h1 className="font-display text-4xl leading-tight md:text-6xl">
+          <h1 className="font-display text-4xl leading-tight md:text-6xl xl:text-7xl">
             CardioX by Deckmount
           </h1>
-          <p className="mx-auto max-w-2xl text-base text-white/70 md:text-lg">
+          <p className="mx-auto max-w-2xl text-base text-white/70 md:text-lg xl:text-xl">
             Experience a new era of ECG intelligence with live waveform analysis,
             predictive alerts, and an intuitive control center engineered for
             cardiologists and clinical teams.
@@ -45,20 +47,20 @@ export function Hero() {
         </div>
 
         <motion.div
-          className="relative mt-12 w-full max-w-5xl"
+          className="relative mt-12 w-full max-w-[90rem]"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
         >
           <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 p-8 shadow-2xl backdrop-blur-xl">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,138,61,0.1),transparent)]" />
-            <div className="relative h-[500px] w-full md:h-[600px]">
+            <div className="relative h-[500px] w-full md:h-[600px] xl:h-[700px] 2xl:h-[780px]">
               <CardioX3DModel className="rounded-2xl" />
             </div>
           </div>
         </motion.div>
 
-        <div className="relative mt-16 w-full max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-2xl">
+        <div className="relative mt-16 w-full max-w-[86rem] rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-2xl">
           <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:gap-8">
             <motion.div
               className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 p-6"
@@ -80,7 +82,7 @@ export function Hero() {
               <div className="mt-6 w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black via-slate-900 to-slate-950 shadow-inner">
                 <div className="relative aspect-[16/10] w-full">
                   <img
-                    src="/src/Assets/Login.png"
+                    src={loginImage}
                     alt="CardioX Login Screen"
                     loading="lazy"
                     className="absolute inset-0 h-full w-full object-contain object-center p-2 opacity-90"

@@ -34,7 +34,7 @@ const capabilityHighlights = [
 
 export function ProductOverview() {
   return (
-    <section id="overview" className="mx-auto max-w-6xl px-6 py-24">
+    <section id="overview" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
       <div className="grid gap-12 lg:grid-cols-[1.4fr_1fr]">
         <div>
           <Badge className="uppercase tracking-[0.4em]">Product Overview</Badge>

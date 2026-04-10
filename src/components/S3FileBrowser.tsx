@@ -24,6 +24,23 @@ const S3FileBrowser: React.FC = () => {
   const [jsonContent, setJsonContent] = useState<any | null>(null);
   const [loadingJson, setLoadingJson] = useState<boolean>(false);
 
+  const getVisiblePages = () => {
+    if (!pagination) return [];
+
+    const totalPages = pagination.totalPages;
+    const pages = new Set<number>();
+
+    [1, 2, totalPages - 1, totalPages].forEach((page) => {
+      if (page >= 1 && page <= totalPages) pages.add(page);
+    });
+
+    for (let page = currentPage - 2; page <= currentPage + 2; page += 1) {
+      if (page >= 1 && page <= totalPages) pages.add(page);
+    }
+
+    return Array.from(pages).sort((a, b) => a - b);
+  };
+
   // Load files from S3
   const loadFiles = async (page: number = 1, searchQuery: string = '', limit: number = pageSize) => {
     setLoading(true);
@@ -124,7 +141,7 @@ const S3FileBrowser: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-4 pb-28 sm:p-6 sm:pb-32">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
@@ -134,7 +151,7 @@ const S3FileBrowser: React.FC = () => {
 
         {/* Search Bar */}
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
-          <form onSubmit={handleSearch} className="flex gap-4">
+          <form onSubmit={handleSearch} className="flex flex-col gap-4 lg:flex-row">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500" size={20} />
               <input
@@ -167,7 +184,7 @@ const S3FileBrowser: React.FC = () => {
               Clear
             </motion.button>
           </form>
-          <div className="mt-4 flex items-center justify-between gap-4">
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               {pagination
                 ? `Showing page ${pagination.page} of ${pagination.totalPages} with ${pagination.total} total files`
@@ -281,9 +298,9 @@ const S3FileBrowser: React.FC = () => {
 
             {/* Pagination */}
             {pagination && pagination.totalPages > 1 && (
-              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-                <div className="flex items-center justify-between">
-                  <div>
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-4 py-5 border-t border-slate-200 dark:from-slate-800 dark:to-slate-900 dark:border-slate-700 sm:px-6">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="shrink-0">
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
                       Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((currentPage - 1) * pagination.limit) + 1}</span> to{' '}
                       <span className="font-bold text-slate-900 dark:text-slate-100">
@@ -292,7 +309,7 @@ const S3FileBrowser: React.FC = () => {
                       of <span className="font-bold text-slate-900 dark:text-slate-100">{pagination.total}</span> results
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => handlePageChange(currentPage - 1)}
                       disabled={currentPage <= 1}
@@ -305,19 +322,25 @@ const S3FileBrowser: React.FC = () => {
                     </button>
                   
                     {/* Page Numbers */}
-                    <div className="flex items-center space-x-1">
-                      {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => handlePageChange(page)}
-                          className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                            page === currentPage
-                              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
-                              : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
-                          }`}
-                        >
-                          {page}
-                        </button>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {getVisiblePages().map((page, index, visiblePages) => (
+                        <React.Fragment key={page}>
+                          {index > 0 && page - visiblePages[index - 1] > 1 && (
+                            <span className="px-2 py-2 text-sm font-medium text-slate-400">
+                              ...
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handlePageChange(page)}
+                            className={`relative inline-flex min-w-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                              page === currentPage
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
+                                : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
                       ))}
                     </div>
                   
