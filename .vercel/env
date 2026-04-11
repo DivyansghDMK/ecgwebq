@@ -1,0 +1,3 @@
+VITE_ADMIN_PROTECTED_API_BASE_URL=https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod
+VITE_ADMIN_S3_FILES_PATH=/s3-files
+VITE_ADMIN_S3_FILE_CONTENT_PATH=/s3-file-content

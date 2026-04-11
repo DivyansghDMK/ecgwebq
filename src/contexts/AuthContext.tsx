@@ -144,7 +144,7 @@ import {
   isRoleAuthenticated,
   setAuthSession,
 } from '@/lib/auth';
-import { getAdminAuthUrl, getDoctorAuthUrl } from '@/lib/apiBase';
+import { getAdminApiBase, getDoctorApiBase, joinApiUrl } from '@/lib/apiBase';
 import { ADMIN_ROUTES, DOCTOR_ROUTES } from '@/lib/apiRoutes';
 
 interface User {
@@ -189,23 +189,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginEndpoint = (targetRole: AuthRole): string =>
     targetRole === "admin"
-      ? getAdminAuthUrl(ADMIN_ROUTES.login)
-      : getDoctorAuthUrl(DOCTOR_ROUTES.login);
+      ? joinApiUrl(getAdminApiBase(), ADMIN_ROUTES.login)
+      : joinApiUrl(getDoctorApiBase(), DOCTOR_ROUTES.login);
 
-  const loginPayload = (targetRole: AuthRole, username: string, password: string) => {
-    const identifier = username.trim();
-
-    if (targetRole === "admin") {
-      return { username: identifier, password };
-    }
-
-    return {
-      username: identifier,
-      doctor_name: identifier,
-      email: identifier,
-      password,
-    };
-  };
+  const loginPayload = (targetRole: AuthRole, username: string, password: string) =>
+    targetRole === "admin"
+      ? { username, password }
+      : { doctor_name: username, password };
 
   const extractAuthPayload = (responseData: any): AuthSuccessPayload | null => {
     if (!responseData?.success) {
@@ -295,14 +285,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const url = loginEndpoint(role);
-      const payload = loginPayload(role, username, password);
-      console.log(`Attempting ${role} login to ${url}`, { payload });
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(loginPayload(role, username, password)),
       });
 
       const responseText = await response.text();

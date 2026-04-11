@@ -12,8 +12,8 @@ export const ADMIN_ROUTES = {
   upload: normalizeRoutePath(import.meta.env.VITE_ADMIN_UPLOAD_PATH, "/prod/api/upload"),
   report: normalizeRoutePath(import.meta.env.VITE_ADMIN_REPORT_PATH, "/prod/api/report"),
   reports: normalizeRoutePath(import.meta.env.VITE_ADMIN_REPORTS_PATH, "/prod/api/reports"),
-  s3Files: normalizeRoutePath(import.meta.env.VITE_ADMIN_S3_FILES_PATH, "/s3-files"),
-  s3FileContent: normalizeRoutePath(import.meta.env.VITE_ADMIN_S3_FILE_CONTENT_PATH, "/s3-file-content"),
+  s3Files: normalizeRoutePath(import.meta.env.VITE_ADMIN_S3_FILES_PATH, "/prod/api/s3-files"),
+  s3FileContent: normalizeRoutePath(import.meta.env.VITE_ADMIN_S3_FILE_CONTENT_PATH, "/prod/api/s3-file-content"),
   createDoctor: normalizeRoutePath(
     import.meta.env.VITE_CREATE_DOCTOR_PATH,
     "/prod/api/admin/create-doctor"

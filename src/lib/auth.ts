@@ -65,15 +65,12 @@ function normalizeToken(raw: string | null): string | null {
     /^AWS4-HMAC-SHA256/i.test(trimmed) ||
     trimmed.includes("Credential=") ||
     trimmed.includes("SignedHeaders=") ||
-    trimmed.includes("Signature=") ||
-    trimmed.includes("bhmxMzYtLnfgCSSGnooRG3hFrXYXgdV+XUC4keblQ8Q=") // Specific bad signature from error
+    trimmed.includes("Signature=")
   ) {
-    console.warn("Rejecting malformed AWS signature token:", trimmed.substring(0, 50) + "...");
     return null;
   }
 
   if (!isJwtLikeToken(trimmed)) {
-    console.warn("Rejecting non-JWT token:", trimmed.substring(0, 50) + "...");
     return null;
   }
 
@@ -100,13 +97,15 @@ export function getStoredToken(role: AuthRole): string | null {
   const roleKeys = getRoleKeys(role);
   const roleToken = normalizeToken(safeGet(roleKeys.token));
 
-  // Return the correct role-specific token if available
   if (roleToken) {
     return roleToken;
   }
 
-  // NO LEGACY FALLBACK - return null if correct token not found
-  // This prevents using wrong tokens that cause auth errors
+  const legacyRole = safeGet(STORAGE_KEYS.legacyRole);
+  if (legacyRole === role) {
+    return normalizeToken(safeGet(STORAGE_KEYS.legacyToken));
+  }
+
   return null;
 }
 
@@ -114,12 +113,15 @@ export function getStoredUser(role: AuthRole): StoredUser | null {
   const roleKeys = getRoleKeys(role);
   const roleUser = parseUser(safeGet(roleKeys.user));
 
-  // Return the correct role-specific user if available
   if (roleUser) {
     return roleUser;
   }
 
-  // NO LEGACY FALLBACK - return null if correct user not found
+  const legacyRole = safeGet(STORAGE_KEYS.legacyRole);
+  if (legacyRole === role) {
+    return parseUser(safeGet(STORAGE_KEYS.legacyUser));
+  }
+
   return null;
 }
 
@@ -135,23 +137,44 @@ export function setAuthSession(role: AuthRole, token: string, user: StoredUser):
     throw new Error("Received an invalid authentication token");
   }
 
-  // Save only to correct role-specific keys
   safeSet(roleKeys.token, normalizedToken);
   safeSet(roleKeys.user, JSON.stringify(user));
 
-  // NO LEGACY SAVES - this prevents token confusion
-  // Legacy keys are removed to ensure clean auth state
+  if (role === "admin") {
+    safeSet(STORAGE_KEYS.legacyAdminLoggedIn, "true");
+  }
+
+  if (role === "doctor") {
+    safeSet(STORAGE_KEYS.legacyDoctorName, user.name);
+    safeSet(STORAGE_KEYS.legacyDoctorId, user.userId);
+  }
+
+  safeSet(STORAGE_KEYS.legacyToken, normalizedToken);
+  safeSet(STORAGE_KEYS.legacyUser, JSON.stringify(user));
+  safeSet(STORAGE_KEYS.legacyRole, role);
 }
 
 export function clearAuthSession(role: AuthRole): void {
   const roleKeys = getRoleKeys(role);
 
-  // Clear only correct role-specific keys
   safeRemove(roleKeys.token);
   safeRemove(roleKeys.user);
 
-  // NO LEGACY CLEARING - legacy keys should be handled separately
-  // This prevents cross-contamination between auth sessions
+  const activeRole = safeGet(STORAGE_KEYS.legacyRole);
+  if (activeRole === role) {
+    safeRemove(STORAGE_KEYS.legacyToken);
+    safeRemove(STORAGE_KEYS.legacyUser);
+    safeRemove(STORAGE_KEYS.legacyRole);
+  }
+
+  if (role === "admin") {
+    safeRemove(STORAGE_KEYS.legacyAdminLoggedIn);
+  }
+
+  if (role === "doctor") {
+    safeRemove(STORAGE_KEYS.legacyDoctorName);
+    safeRemove(STORAGE_KEYS.legacyDoctorId);
+  }
 }
 
 export function clearAllAuthSessions(): void {
@@ -159,54 +182,7 @@ export function clearAllAuthSessions(): void {
   clearAuthSession("doctor");
 }
 
-export function clearMalformedTokens(): void {
-  const allKeys = Object.values(STORAGE_KEYS);
-  
-  allKeys.forEach(key => {
-    const value = safeGet(key);
-    if (value && (
-      value.includes("AWS4-HMAC-SHA256") ||
-      value.includes("Credential=") ||
-      value.includes("SignedHeaders=") ||
-      value.includes("Signature=") ||
-      value.includes("bhmxMzYtLnfgCSSGnooRG3hFrXYXgdV+XUC4keblQ8Q=")
-    )) {
-      console.warn("Clearing malformed token from localStorage:", key);
-      safeRemove(key);
-    }
-  });
-
-  // Also clear legacy keys to prevent confusion
-  const legacyKeys = [
-    STORAGE_KEYS.legacyToken,
-    STORAGE_KEYS.legacyUser, 
-    STORAGE_KEYS.legacyRole,
-    STORAGE_KEYS.legacyAdminLoggedIn,
-    STORAGE_KEYS.legacyDoctorName,
-    STORAGE_KEYS.legacyDoctorId
-  ];
-  
-  legacyKeys.forEach(key => {
-    safeRemove(key);
-  });
-}
-
-// Add global function for manual clearing in browser console
-declare global {
-  interface Window {
-    clearBadAuthTokens: () => void;
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.clearBadAuthTokens = clearMalformedTokens;
-  console.log("Auth token cleanup loaded. Call window.clearBadAuthTokens() to manually clear malformed tokens.");
-}
-
 export function buildAuthHeaders(role: AuthRole, isJson: boolean = true): HeadersInit {
-  // Clear any malformed tokens before building headers
-  clearMalformedTokens();
-  
   const headers: Record<string, string> = {};
   const token = getStoredToken(role);
 
