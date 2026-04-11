@@ -12,19 +12,19 @@ html {
 
 @media (min-width: 1280px) {
   html {
-    font-size: 16.5px;
+    font-size: 17px;
   }
 }
 
 @media (min-width: 1536px) {
   html {
-    font-size: 17px;
+    font-size: 18px;
   }
 }
 
 @media (min-width: 1920px) {
   html {
-    font-size: 17.5px;
+    font-size: 19px;
   }
 }
 

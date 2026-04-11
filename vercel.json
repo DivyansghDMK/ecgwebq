@@ -1,18 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/__doctor_api/(.*)",
-      "destination": "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod/$1"
-    },
-    {
-      "source": "/__admin_auth/(.*)",
-      "destination": "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod/$1"
-    },
-    {
-      "source": "/__admin_api/(.*)",
-      "destination": "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod/$1"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

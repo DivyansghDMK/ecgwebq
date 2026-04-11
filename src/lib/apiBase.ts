@@ -31,6 +31,10 @@ function normalizePath(path: string): string {
 }
 
 export function getAdminApiBase(): string {
+  if (import.meta.env.DEV) {
+    return "/__admin_auth";
+  }
+
   return ensureProdStage(
     import.meta.env.VITE_ADMIN_AUTH_BASE_URL ||
     import.meta.env.VITE_API_BASE_URL ||
@@ -39,27 +43,26 @@ export function getAdminApiBase(): string {
 }
 
 export function getAdminProtectedApiBase(): string {
-  // DEV aur PROD dono mein same gateway use karo - no proxy
+  if (import.meta.env.DEV) {
+    return "/__admin_api";
+  }
+
   return trimTrailingSlashes(
     import.meta.env.VITE_ADMIN_PROTECTED_API_BASE_URL ||
     import.meta.env.VITE_API_BASE_URL ||
-    "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com"
+    "https://8m9fgt2fz1.execute-api.us-east-1.amazonaws.com"
   );
 }
 
 export function getDoctorApiBase(): string {
+  if (import.meta.env.DEV) {
+    return "/__doctor_api";
+  }
+
   return ensureProdStage(
     import.meta.env.VITE_DOCTOR_API_BASE_URL ||
     "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod"
   );
-}
-
-export function getDoctorAuthUrl(path: string): string {
-  return joinApiUrl(getDoctorApiBase(), path);
-}
-
-export function getAdminAuthUrl(path: string): string {
-  return joinApiUrl(getAdminApiBase(), path);
 }
 
 export function joinApiUrl(base: string, path: string): string {

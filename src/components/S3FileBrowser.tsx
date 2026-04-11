@@ -7,7 +7,6 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { fetchS3Files, fetchS3FileContent, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
 import { S3File, S3FilesResponse } from '../api/types/ecg';
-import { getAdminProtectedApiBase } from '../lib/apiBase';
 
 import { Download, Eye, Search, X, FileText, Loader2 } from 'lucide-react';
 
@@ -434,23 +433,16 @@ const S3FileBrowser: React.FC = () => {
                     </div>
                   )
                 ) : selectedFile.type === 'application/pdf' && selectedFile.url ? (
-                  // PDF download button (working version)
-                  <div className="w-full h-[600px] border-0 rounded-lg shadow-inner bg-white flex items-center justify-center">
-                    <div className="text-center p-8">
-                      <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                      <p className="text-lg font-medium text-slate-600 mb-2">PDF Preview</p>
-                      <p className="text-sm text-slate-500 mb-4">Click to download and view this PDF file</p>
-                      <motion.button
-                        onClick={() => handleDownload(selectedFile)}
-                        whileHover={{ y: -2, scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium rounded-xl shadow-md hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg transition-all duration-200"
-                      >
-                        <Download size={16} />
-                        Download PDF
-                      </motion.button>
-                    </div>
-                  </div>
+                  // ✅ FIX 2: Route PDF preview through backend proxy to avoid preflight CORS errors.
+                  // Instead of passing the raw S3 URL to Google Docs Viewer (which triggers a
+                  // cross-origin preflight from Google's servers to your S3 bucket), we use our
+                  // own backend proxy endpoint. The backend fetches the file from S3 privately
+                  // and streams it back with the correct CORS headers.
+                  <iframe
+                    src={selectedFile.url}
+                    className="w-full h-[600px] border-0 rounded-lg shadow-inner bg-white"
+                    title={selectedFile.name}
+                  />
                 ) : (
                   <div className="text-center py-8 text-slate-500">
                     <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />

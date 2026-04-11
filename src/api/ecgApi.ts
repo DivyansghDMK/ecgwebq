@@ -13,7 +13,7 @@ import type {
   S3File,
 } from './types/ecg';
 import { buildAuthHeaders } from '@/lib/auth';
-import { getAdminProtectedApiBase, getDoctorApiBase, getDoctorAuthUrl, joinApiUrl } from '@/lib/apiBase';
+import { getAdminProtectedApiBase, getDoctorApiBase, joinApiUrl } from '@/lib/apiBase';
 import { ADMIN_ROUTES, DOCTOR_ROUTES } from '@/lib/apiRoutes';
 
 // API Bases
@@ -35,8 +35,7 @@ function getDoctorAuthHeaders(isJson: boolean = true): HeadersInit {
  * Doctor login API - uses dedicated API Gateway for login
  */
 export async function doctorLogin(doctorName: string, password: string) {
-  const url = getDoctorAuthUrl(DOCTOR_ROUTES.login);
-  const identifier = doctorName.trim();
+  const url = joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.login);
 
   const response = await fetch(url, {
     method: "POST",
@@ -44,10 +43,8 @@ export async function doctorLogin(doctorName: string, password: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      username: identifier,
-      doctor_name: identifier,
-      email: identifier,
-      password,
+      doctor_name: doctorName,
+      password: password,
     }),
   });
 
@@ -433,32 +430,18 @@ function normalizeDoctorReportSummary(raw: any, fallbackStatus: "pending" | "rev
     raw?.reportName ||
     deriveFileName(key, "Report");
 
-  // Check if report is reviewed or pending to build correct URL
-  const status = raw?.status || fallbackStatus;
-  let url = String(raw?.url || raw?.fileUrl || raw?.presignedUrl || raw?.downloadUrl || "");
-  
-  // If no URL provided, construct it based on status
-  if (!url && key) {
-    const doctorName = raw?.doctorName || raw?.doctor_name || raw?.assignedTo || raw?.assigned_to || "unknown";
-    if (status === "reviewed") {
-      url = `doctor-assigned-reports/${doctorName}/reviewed/${fileName}`;
-    } else {
-      url = `doctor-assigned-reports/${doctorName}/pending/${fileName}`;
-    }
-  }
-
   return {
     id: String(raw?.id || raw?.reportId || key || fileName),
     key: String(key || fileName),
     fileName: String(fileName),
-    url: url,
+    url: String(raw?.url || raw?.fileUrl || raw?.presignedUrl || raw?.downloadUrl || ""),
     uploadedAt: raw?.uploadedAt || raw?.uploaded_at,
     lastModified: raw?.lastModified || raw?.last_modified,
     assignedAt: raw?.assignedAt || raw?.assigned_at || raw?.uploadedAt || raw?.lastModified,
     reviewedAt: raw?.reviewedAt || raw?.reviewed_at || raw?.uploadedAt || raw?.lastModified,
     patientName: raw?.patientName || raw?.patient_name,
     reportType: raw?.reportType || raw?.report_type || raw?.type,
-    status: status,
+    status: raw?.status || fallbackStatus,
   };
 }
 
@@ -671,7 +654,7 @@ export async function createDoctor(payload: CreateDoctorPayload): Promise<Doctor
 }
 
 export async function validateDoctorInvite(token: string): Promise<DoctorInviteInfo> {
-  const url = getDoctorAuthUrl(DOCTOR_ROUTES.validateInvite);
+  const url = joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.validateInvite);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -701,7 +684,7 @@ export interface SetDoctorPasswordPayload {
 }
 
 export async function setDoctorPassword(payload: SetDoctorPasswordPayload): Promise<void> {
-  const url = getDoctorAuthUrl(DOCTOR_ROUTES.setPassword);
+  const url = joinApiUrl(DOCTOR_API_BASE_URL, DOCTOR_ROUTES.setPassword);
 
   const response = await fetch(url, {
     method: 'POST',

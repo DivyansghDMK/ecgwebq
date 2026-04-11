@@ -17,9 +17,9 @@ const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
 const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
 
 const deviceStats = [
-  { label: "Sampling Rate", value: "1000 sps / lead" },
-  { label: "ADC Resolution", value: "24 bit" },
-  { label: "Recording Window", value: "Up to 24 hrs" }
+  { label: "Sampling Rate", value: "500 sps / lead" },
+  { label: "ADC Resolution", value: "12–16 bit" },
+  { label: "Recording Window", value: "Up to 2 hrs" }
 ];
 
 const deviceFeatures = [
