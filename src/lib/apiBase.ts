@@ -43,10 +43,6 @@ export function getAdminApiBase(): string {
 }
 
 export function getAdminProtectedApiBase(): string {
-  if (import.meta.env.DEV) {
-    return "/__admin_api";
-  }
-
   return trimTrailingSlashes(
     import.meta.env.VITE_ADMIN_PROTECTED_API_BASE_URL ||
     import.meta.env.VITE_API_BASE_URL ||
