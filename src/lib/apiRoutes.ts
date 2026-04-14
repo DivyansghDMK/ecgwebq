@@ -9,16 +9,13 @@ function normalizeRoutePath(value: string | undefined, fallback: string): string
 
 export const ADMIN_ROUTES = {
   login: normalizeRoutePath(import.meta.env.VITE_ADMIN_LOGIN_PATH, "/admin/login"),
-  upload: normalizeRoutePath(import.meta.env.VITE_ADMIN_UPLOAD_PATH, "/prod/api/upload"),
-  report: normalizeRoutePath(import.meta.env.VITE_ADMIN_REPORT_PATH, "/prod/api/report"),
-  reports: normalizeRoutePath(import.meta.env.VITE_ADMIN_REPORTS_PATH, "/prod/api/reports"),
-  s3Files: normalizeRoutePath(import.meta.env.VITE_ADMIN_S3_FILES_PATH, "/prod/api/s3-files"),
-  s3FileContent: normalizeRoutePath(import.meta.env.VITE_ADMIN_S3_FILE_CONTENT_PATH, "/prod/api/s3-file-content"),
-  createDoctor: normalizeRoutePath(
-    import.meta.env.VITE_CREATE_DOCTOR_PATH,
-    "/prod/api/admin/create-doctor"
-  ),
-  getDoctors: normalizeRoutePath(import.meta.env.VITE_ADMIN_GET_DOCTORS_PATH, "/prod/api/admin/doctor"),
+  upload: normalizeRoutePath(import.meta.env.VITE_ADMIN_UPLOAD_PATH, "/api/upload"),
+  report: normalizeRoutePath(import.meta.env.VITE_ADMIN_REPORT_PATH, "/api/report"),
+  reports: normalizeRoutePath(import.meta.env.VITE_ADMIN_REPORTS_PATH, "/api/reports"),
+  s3Files: "/s3-files",                    // hardcode karo - env var ignore
+  s3FileContent: "/s3-file-content",       // hardcode karo - env var ignore
+  createDoctor: normalizeRoutePath(import.meta.env.VITE_CREATE_DOCTOR_PATH, "/api/admin/create-doctor"),
+  getDoctors: normalizeRoutePath(import.meta.env.VITE_ADMIN_GET_DOCTORS_PATH, "/api/admin/doctor"),
 } as const;
 
 export const DOCTOR_ROUTES = {

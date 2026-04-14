@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (requestPath) => requestPath.replace(/^\/__admin_auth/, ""),
         },
         "/__admin_api": {
-          target: env.VITE_ADMIN_PROTECTED_API_BASE_URL || env.VITE_API_BASE_URL,
+          target: "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod",
           changeOrigin: true,
           secure: true,
           rewrite: (requestPath) => requestPath.replace(/^\/__admin_api/, ""),
