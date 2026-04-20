@@ -201,21 +201,17 @@ async function fetchAllS3Files(searchTerm: string = '', signal?: AbortSignal): P
   const pageLimit = 100;
   const firstPage = await fetchS3Files(1, pageLimit, searchTerm, signal);
   const allFiles = [...(firstPage.files || [])];
-  const totalPages = firstPage.pagination?.totalPages || 1;
+  
+  // Cap to maximum 10 pages (1000 items) to prevent huge delays, fire all concurrently
+  const totalPages = Math.min(firstPage.pagination?.totalPages || 1, 10);
   const resolvedLimit = firstPage.pagination?.limit || pageLimit;
 
-  const maxConcurrency = 5;
-  for (let startPage = 2; startPage <= totalPages; startPage += maxConcurrency) {
-    if (signal?.aborted) {
-      throw new DOMException('Search cancelled', 'AbortError');
-    }
+  if (totalPages > 1) {
     const promises = [];
-    for (let offset = 0; offset < maxConcurrency; offset++) {
-      const p = startPage + offset;
-      if (p <= totalPages) {
-        promises.push(fetchS3Files(p, resolvedLimit, searchTerm, signal));
-      }
+    for (let p = 2; p <= totalPages; p++) {
+      promises.push(fetchS3Files(p, resolvedLimit, searchTerm, signal));
     }
+    
     const results = await Promise.all(promises);
     results.forEach((res) => {
       allFiles.push(...(res.files || []));

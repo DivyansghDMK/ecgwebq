@@ -63,23 +63,24 @@ export default function DashboardOverview() {
 
   // Fetch ALL S3 files (for user registrations)
   const fetchAllS3Files = async (): Promise<any[]> => {
-    const allFiles: any[] = [];
-    let currentPage = 1;
-    let hasMore = true;
-    const limit = 20; // Reduced to avoid Lambda timeout
-
-    while (hasMore && currentPage <= 10) { // Limit to 10 pages for performance
-      try {
-        const response = await fetchS3Files(currentPage, limit, '');
-        allFiles.push(...response.files);
-        hasMore = response.pagination?.hasNext || false;
-        currentPage++;
-      } catch (error) {
-        console.error(`Error fetching S3 page ${currentPage}:`, error);
-        hasMore = false;
-      }
+    try {
+      const limit = 100;
+      const pagesToFetch = [1, 2, 3]; // Fetch 300 recent files for stats
+      
+      const promises = pagesToFetch.map(page => 
+        fetchS3Files(page, limit, '').catch(error => {
+          console.error(`Error fetching S3 page ${page}:`, error);
+          return { files: [] };
+        })
+      );
+      
+      const responses = await Promise.all(promises);
+      const allFiles = responses.flatMap(res => res.files || []);
+      return allFiles;
+    } catch (error) {
+      console.error('Error in parallel fetching:', error);
+      return [];
     }
-    return allFiles;
   };
 
   // Fetch real data from API

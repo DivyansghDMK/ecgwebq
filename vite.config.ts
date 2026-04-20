@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
       open: true,
       proxy: {
         "/__admin_auth": {
-          target: env.VITE_ADMIN_AUTH_BASE_URL || env.VITE_API_BASE_URL,
+          target: env.VITE_ADMIN_AUTH_BASE_URL || env.VITE_API_BASE_URL || "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod",
           changeOrigin: true,
           secure: true,
           rewrite: (requestPath) => requestPath.replace(/^\/__admin_auth/, ""),
@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (requestPath) => requestPath.replace(/^\/__admin_api/, ""),
         },
         "/__doctor_api": {
-          target: env.VITE_DOCTOR_API_BASE_URL,
+          target: env.VITE_DOCTOR_API_BASE_URL || "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod",
           changeOrigin: true,
           secure: true,
           rewrite: (requestPath) => requestPath.replace(/^\/__doctor_api/, ""),

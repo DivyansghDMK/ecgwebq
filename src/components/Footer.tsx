@@ -1,7 +1,5 @@
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
-import { VisitorStats } from "./VisitorStats";
-
 type FooterLink = {
   label: string;
   href?: string;
@@ -80,9 +78,6 @@ export function Footer() {
               </ul>
             </div>
           ))}
-          <div className="space-y-4 min-w-[250px] sm:col-span-2 lg:col-span-1 lg:min-w-[280px]">
-            <VisitorStats />
-          </div>
         </div>
       </div>
       <div className="border-t border-white/5 py-6 text-center text-xs uppercase tracking-[0.35em] text-white/50">
