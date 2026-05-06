@@ -30,13 +30,23 @@ export function Navbar() {
         </div>
         <nav className="hidden flex-1 items-center justify-center gap-5 lg:flex">
           {navItems.map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="whitespace-nowrap text-[0.72rem] xl:text-[0.78rem] font-medium uppercase leading-tight tracking-[0.28em] text-white/70 transition hover:text-white"
-            >
-              {item.label}
-            </a>
+            item.href.startsWith('/') ? (
+              <Link
+                key={item.href}
+                to={item.href}
+                className="whitespace-nowrap text-[0.72rem] xl:text-[0.78rem] font-medium uppercase leading-tight tracking-[0.28em] text-white/70 transition hover:text-white"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <a
+                key={item.href}
+                href={item.href}
+                className="whitespace-nowrap text-[0.72rem] xl:text-[0.78rem] font-medium uppercase leading-tight tracking-[0.28em] text-white/70 transition hover:text-white"
+              >
+                {item.label}
+              </a>
+            )
           ))}
           <a
             href="#login-section"
@@ -64,17 +74,36 @@ export function Navbar() {
           >
             <div className="space-y-4 px-6 pb-6 pt-4">
               {navItems.map((item) => (
-                <motion.a
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition",
-                    "hover:bg-white/10 hover:text-white"
-                  )}
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.label}
-                </motion.a>
+                item.href.startsWith('/') ? (
+                  <motion.div
+                    key={item.href}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Link
+                      to={item.href}
+                      className={cn(
+                        "block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition",
+                        "hover:bg-white/10 hover:text-white"
+                      )}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  </motion.div>
+                ) : (
+                  <motion.a
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition",
+                      "hover:bg-white/10 hover:text-white"
+                    )}
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {item.label}
+                  </motion.a>
+                )
               ))}
               <motion.a
                 href="#login-section"

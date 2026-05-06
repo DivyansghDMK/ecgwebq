@@ -47,8 +47,9 @@ export default function AdminLayout() {
     { path: "/artists", label: "Dashboard", match: (path: string) => path === "/artists" || path === "/artists/" },
     { path: "/artists/users", label: "Users", match: (path: string) => path.includes("users") },
     { path: "/artists/reports", label: "Reports", match: (path: string) => path.includes("reports") },
-    { path: "/artists/s3-browser", label: "S3 Browser", match: (path: string) => path.includes("s3-browser") },
-    { path: "/artists/graphs", label: "Graphs", match: (path: string) => path.includes("graphs") },
+    { path: "/artists/s3-browser", label: "Reports Repository", match: (path: string) => path.includes("s3-browser") },
+    { path: "/artists/graphs", label: "Analytics", match: (path: string) => path.includes("graphs") },
+    { path: "/artists/support", label: "Support", match: (path: string) => path.includes("support") },
   ];
 
   const isActive = (matchFn: (path: string) => boolean) => matchFn(location.pathname);

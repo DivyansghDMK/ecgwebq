@@ -45,6 +45,8 @@ import ReportsAnalytics from "@/components/dashboard_CPAP_BiPAP/ReportsAnalytics
 import DoctorDashboardPresentation from "@/components/doctor/DoctorDashboardPresentation";
 import DoctorReportsPage from "@/components/doctor/DoctorReportsPage";
 import DoctorSetupPage from "@/components/doctor/DoctorSetupPage";
+import SupportComplaints from "@/components/admin/SupportComplaints";
+import VersionDownloadPage from "@/pages/VersionDownloadPage";
 
 
 
@@ -105,6 +107,7 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="s3-browser" element={<S3FileBrowser />} />
           <Route path="graphs" element={<ECGGraphsPage />} />
+          <Route path="support" element={<SupportComplaints />} />
         </Route>
       </Route>
 
@@ -115,6 +118,9 @@ export default function App() {
       {/* public login for admin / doctor */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/doctor/setup" element={<DoctorSetupPage />} />
+      
+      {/* Version download page */}
+      <Route path="/version" element={<VersionDownloadPage />} />
 
         {/* CPAP/BiPAP Routes */}
         <Route path="/cpap/login" element={<CPAPLogin />} />

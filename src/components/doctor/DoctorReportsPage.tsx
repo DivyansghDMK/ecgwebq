@@ -70,10 +70,13 @@ export const DoctorReportsPage: React.FC = () => {
     setReports(prev => prev.filter(r => r.key !== reviewedReport.key));
     
     // Add to reviewed list with timestamp (convert to DoctorReportSummary)
-    const reviewedSummary: DoctorReportSummary = {
-      key: reviewedReport.key,
-      fileName: reviewedReport.fileName,
-      url: reviewedReport.url,
+   const updatedUrl = reviewedReport.url?.replace("/pending/", "/reviewed/");
+
+  const reviewedSummary: DoctorReportSummary = {
+  id: reviewedReport.key,
+  key: reviewedReport.key,
+  fileName: reviewedReport.fileName,
+  url: updatedUrl, 
       uploadedAt: new Date().toISOString(),
       lastModified: new Date().toISOString()
     };
@@ -332,7 +335,11 @@ export const DoctorReportsPage: React.FC = () => {
                                 <motion.button
                                   whileHover={{ scale: 1.04 }}
                                   whileTap={{ scale: 0.96 }}
-                                  onClick={() => report.url && window.open(report.url, "_blank")}
+                                  //onClick={() => report.url && window.open(report.url, "_blank")}
+                                  onClick={() => {
+                                    if (!report.url) return;
+                                    window.open(report.url, "_blank");
+                                  }}
                                   className="doctor-secondary-button inline-flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-700"
                                 >
                                   <Eye size={14} />
@@ -431,7 +438,12 @@ export const DoctorReportsPage: React.FC = () => {
                                 <motion.button
                                   whileHover={{ scale: 1.04 }}
                                   whileTap={{ scale: 0.96 }}
-                                  onClick={() => report.url && window.open(report.url, "_blank")}
+                                  //onClick={() => report.url && window.open(report.url, "_blank")}
+                                  onClick={() => {
+                                  if (!report.url) return;
+                                        const updatedUrl = report.url.replace("/pending/", "/reviewed/");
+                                        window.open(updatedUrl, "_blank");
+                                  }}
                                   className="doctor-secondary-button inline-flex items-center gap-1 rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-100 hover:bg-slate-700"
                                 >
                                   <Eye size={14} />
