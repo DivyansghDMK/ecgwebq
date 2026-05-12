@@ -613,7 +613,8 @@ export async function fetchDoctors(): Promise<Doctor[]> {
 }
 
 export async function createDoctor(payload: CreateDoctorPayload): Promise<Doctor> {
-  const url = joinApiUrl(API_BASE_URL, ADMIN_ROUTES.createDoctor);
+  const base = import.meta.env.VITE_ADMIN_NEW_API_BASE_URL || API_BASE_URL;
+  const url = joinApiUrl(base, ADMIN_ROUTES.createDoctor);
   const response = await fetch(url, {
     method: "POST",
     headers: getAdminAuthHeaders(true),
@@ -702,4 +703,111 @@ export async function setDoctorPassword(payload: SetDoctorPasswordPayload): Prom
       )
     );
   }
+}
+
+/* ======================= SUPPORT API ======================= */
+
+export interface SupportComplaint {
+  id: string;
+  name: string;
+  machine_id: string;
+  complaint: string;
+  source: string;
+  status: 'pending' | 'open' | 'in_progress' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string;
+  notes?: string;
+}
+
+export interface CreateComplaintPayload {
+  name: string;
+  machine_id: string;
+  complaint: string;
+  source: string;
+}
+
+export interface UpdateComplaintPayload {
+  status?: string;
+  notes?: string;
+}
+
+// export async function fetchSupportComplaints(): Promise<{ success: boolean; complaints: SupportComplaint[] }> {
+//   const baseUrl = import.meta.env.VITE_SUPPORT_API_BASE_URL || 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
+//   const path = import.meta.env.VITE_SUPPORT_COMPLAINTS_PATH || '/support/complaints';
+//   const response = await fetch(`${baseUrl}${path}`);
+  
+//   if (!response.ok) {
+//     throw new Error(`Failed to fetch complaints: ${response.statusText}`);
+//   }
+  
+//   return await response.json();
+// }
+export async function fetchSupportComplaints(): Promise<{ success: boolean; complaints: SupportComplaint[] }> {
+  const baseUrl = import.meta.env.VITE_SUPPORT_API_BASE_URL || 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
+  const path = import.meta.env.VITE_SUPPORT_COMPLAINTS_PATH || '/support/complaints';
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "GET",
+    headers: buildAuthHeaders("admin"), // ✅ FIX
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch complaints: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+export async function updateSupportComplaint(id: string, payload: UpdateComplaintPayload): Promise<{ success: boolean }> {
+  const baseUrl = import.meta.env.VITE_SUPPORT_API_BASE_URL || 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
+  const path = import.meta.env.VITE_SUPPORT_UPDATE_COMPLAINT_PATH || '/support/complaint';
+
+  const response = await fetch(
+    `${baseUrl}${path}/${id}`,
+    {
+      method: 'PATCH',
+      headers: buildAuthHeaders("admin", true),
+      body: JSON.stringify({
+        complaint_id: id,
+        status: payload.status,
+        admin_notes: payload.notes || ""
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    console.log("ERROR RESPONSE:", errText);
+
+    let message = response.statusText;
+    try {
+      const errJson = JSON.parse(errText);
+      message = errJson.message || errJson.error?.message || errText;
+    } catch {}
+
+    throw new Error(`Failed to update complaint: ${message}`);
+  }
+
+  return await response.json();
+}
+
+export async function createSupportComplaint(payload: CreateComplaintPayload): Promise<{ success: boolean; id: string }> {
+  const baseUrl = import.meta.env.VITE_SUPPORT_API_BASE_URL || 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
+  const path = import.meta.env.VITE_SUPPORT_COMPLAINT_PATH || '/support/complaint';
+  const response = await fetch(
+    `${baseUrl}${path}`,
+    {
+      method: 'POST',
+      headers: buildAuthHeaders("admin", true),
+      body: JSON.stringify(payload),
+    }
+  );
+  
+  if (!response.ok) {
+    throw new Error(`Failed to create complaint: ${response.statusText}`);
+  }
+  
+  return await response.json();
 }
