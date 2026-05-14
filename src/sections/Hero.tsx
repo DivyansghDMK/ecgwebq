@@ -10,7 +10,7 @@ export function Hero() {
   return (
     <section
       id="hero"
-      className="relative flex min-h-screen items-center justify-center overflow-hidden pt-24"
+      className="relative flex min-h-screen items-center justify-center overflow-x-hidden pt-24"
     >
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-background opacity-60" />
@@ -22,13 +22,16 @@ export function Hero() {
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.9 }}
-        className="relative mx-auto flex w-full max-w-[100rem] flex-col items-center gap-12 px-6 text-center lg:px-8"
+        className="relative mx-auto flex w-full max-w-7xl flex-col items-center gap-8 px-4 text-center sm:px-6 lg:gap-10 lg:px-8"
       >
-        <Badge className="uppercase tracking-[0.4em]">
+        <Badge className="max-w-full text-center uppercase tracking-[0.24em] sm:tracking-[0.4em]">
           Built to Detect. Designed to Last.
         </Badge>
-        <div className="space-y-6">
-          <h1 className="font-display text-4xl leading-tight md:text-6xl xl:text-7xl">
+        <div className="w-full max-w-5xl space-y-5 text-center">
+          <h1
+            className="font-display leading-tight"
+            style={{ fontSize: "3.5rem" }}
+          >
             CardioX by Deckmount
           </h1>
           <p className="mx-auto max-w-2xl text-base text-white/70 md:text-lg xl:text-xl">
@@ -37,30 +40,33 @@ export function Hero() {
             cardiologists and clinical teams.
           </p>
         </div>
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <Button className="min-w-[200px] uppercase tracking-[0.3em]">
+        <div className="flex w-full flex-wrap items-center justify-center gap-4 text-center">
+          <Button className="min-w-0 w-full max-w-[240px] uppercase tracking-[0.22em] sm:min-w-[200px]">
             Launch Live Demo
           </Button>
-          <Button variant="secondary" className="min-w-[200px] tracking-[0.3em]">
+          <Button
+            variant="secondary"
+            className="min-w-0 w-full max-w-[240px] tracking-[0.22em] sm:min-w-[200px]"
+          >
             Download Brochure
           </Button>
         </div>
 
         <motion.div
-          className="relative mt-12 w-full max-w-[90rem]"
+          className="relative mt-4 w-full max-w-7xl lg:mt-8"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.5 }}
         >
-          <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 p-8 shadow-2xl backdrop-blur-xl">
+          <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 p-3 shadow-2xl backdrop-blur-xl sm:p-5 lg:p-8">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,138,61,0.1),transparent)]" />
-            <div className="relative h-[500px] w-full md:h-[600px] xl:h-[700px] 2xl:h-[780px]">
+            <div className="relative h-[clamp(260px,42vh,560px)] w-full">
               <CardioX3DModel className="rounded-2xl" />
             </div>
           </div>
         </motion.div>
 
-        <div className="relative mt-16 w-full max-w-[86rem] rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-2xl">
+        <div className="relative mt-10 w-full max-w-7xl rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-2xl sm:p-6 lg:mt-14">
           <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:gap-8">
             <motion.div
               className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 p-6"
@@ -93,7 +99,7 @@ export function Hero() {
 
             <motion.div
               className={cn(
-                "glass-panel flex flex-col gap-4 self-center border border-brand-orange/40 p-6 text-left",
+                "glass-panel flex flex-col flex-wrap gap-4 self-center border border-brand-orange/40 p-6 text-center sm:text-left",
                 "shadow-[0_0_60px_rgba(255,138,61,0.2)]"
               )}
               initial={{ opacity: 0, x: 30 }}
@@ -104,7 +110,7 @@ export function Hero() {
               <p className="text-xs uppercase tracking-[0.4em] text-brand-electric">
                 Live Metric Snapshot
               </p>
-              <div className="grid grid-cols-3 gap-3 text-center text-white">
+              <div className="grid grid-cols-1 gap-3 text-center text-white sm:grid-cols-3">
                 {[
                   ["HR", "60 BPM"],
                   ["PR", "160 ms"],
@@ -124,7 +130,7 @@ export function Hero() {
               <p className="text-sm text-white/70">
                 Real-time waveform monitoring with AI-assisted arrhythmia detection.
               </p>
-              <Button variant="ghost" className="justify-between px-4 text-sm">
+              <Button variant="ghost" className="flex-wrap justify-center gap-2 px-4 text-center text-sm sm:justify-between">
                 Watch an ECG session replay <span aria-hidden>→</span>
               </Button>
             </motion.div>
