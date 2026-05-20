@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Wind, ArrowRight } from "lucide-react";
+import { Activity, ArrowRight } from "lucide-react";
 
 export function LoginSection() {
   const navigate = useNavigate();
@@ -18,18 +18,7 @@ export function LoginSection() {
       cardBg: "bg-gradient-to-br from-orange-50/40 to-amber-50/30",
       borderColor: "border-orange-200/50",
       route: "/login",
-    },
-    {
-      id: "cpap",
-      title: "Login for CPAP/BiPAP",
-      description: "Access respiratory therapy device dashboard for CPAP and BiPAP monitoring",
-      icon: Wind,
-      gradient: "from-teal-400 to-emerald-500",
-      iconBg: "bg-teal-100",
-      iconColor: "text-teal-600",
-      cardBg: "bg-gradient-to-br from-teal-50/40 to-emerald-50/30",
-      borderColor: "border-teal-200/50",
-      route: "/cpap/login",
+      isDisabled: false,
     },
   ];
 
@@ -51,7 +40,7 @@ export function LoginSection() {
         </p>
       </motion.div>
 
-      <div className="mx-auto grid max-w-6xl xl:max-w-7xl grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6">
         {loginOptions.map((option, index) => {
           const Icon = option.icon;
           return (
@@ -61,9 +50,13 @@ export function LoginSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={{ y: -6, scale: 1.01 }}
-              onClick={() => navigate(option.route)}
-              className={`${option.cardBg} rounded-2xl border ${option.borderColor} shadow-lg hover:shadow-xl p-8 cursor-pointer group relative overflow-hidden backdrop-blur-sm transition-all duration-300`}
+              whileHover={option.isDisabled ? undefined : { y: -6, scale: 1.01 }}
+              onClick={() => {
+                if (!option.isDisabled && option.route) {
+                  navigate(option.route);
+                }
+              }}
+              className={`${option.cardBg} rounded-2xl border ${option.borderColor} shadow-lg p-8 group relative overflow-hidden backdrop-blur-sm transition-all duration-300 ${option.isDisabled ? "cursor-not-allowed opacity-80" : "cursor-pointer hover:shadow-xl"}`}
             >
               <div className="relative z-10">
                 {/* Icon */}
@@ -88,14 +81,20 @@ export function LoginSection() {
 
                 {/* Action Button */}
                 <div className="flex justify-center">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className={`inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r ${option.gradient} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300`}
-                  >
-                    <span>Continue</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </motion.div>
+                  {option.isDisabled ? (
+                    <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r ${option.gradient} text-white font-semibold shadow-lg opacity-80`}>
+                      <span>Under Construction</span>
+                    </div>
+                  ) : (
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className={`inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r ${option.gradient} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300`}
+                    >
+                      <span>Continue</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </motion.div>
+                  )}
                 </div>
               </div>
 

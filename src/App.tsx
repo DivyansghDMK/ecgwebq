@@ -31,24 +31,41 @@ import S3FileBrowser from "@/components/S3FileBrowser";
 import ECGGraphsPage from "@/components/admin/graphs/ECGGraphsPage";
 import LoginPage from "@/components/auth/LoginPage";
 import RequireRole from "@/components/auth/RequireRole";
-import CPAPLogin from "@/components/dashboard_CPAP_BiPAP/CPAPLogin";
-import CPAPDashboard from "@/components/dashboard_CPAP_BiPAP/CPAPDashboard";
-import CPAPSettings from "@/components/dashboard_CPAP_BiPAP/CPAPSettings";
-import AutoCPAPMode from "@/components/dashboard_CPAP_BiPAP/AutoCPAPMode";
-import CPAPMode from "@/components/dashboard_CPAP_BiPAP/CPAPMode";
-import SMode from "@/components/dashboard_CPAP_BiPAP/SMode";
-import TMode from "@/components/dashboard_CPAP_BiPAP/TMode";
-import STMode from "@/components/dashboard_CPAP_BiPAP/STMode";
-import VAPSMode from "@/components/dashboard_CPAP_BiPAP/VAPSMode";
-import ReportsLogin from "@/components/dashboard_CPAP_BiPAP/ReportsLogin";
-import ReportsUpload from "@/components/dashboard_CPAP_BiPAP/ReportsUpload";
-import ReportsAnalytics from "@/components/dashboard_CPAP_BiPAP/ReportsAnalytics";
 import DoctorDashboardPresentation from "@/components/doctor/DoctorDashboardPresentation";
 import DoctorReportsPage from "@/components/doctor/DoctorReportsPage";
 import DoctorSetupPage from "@/components/doctor/DoctorSetupPage";
 import SupportComplaints from "@/components/admin/SupportComplaints";
 import VersionDownloadPage from "@/pages/VersionDownloadPage";
+import LicensesPage from "@/pages/Licenses";
 
+
+function CPAPUnderConstruction() {
+  return (
+    <main className="flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-blue-50 via-white to-sky-100 px-4 py-12 text-slate-900">
+      <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-blue-200/60 to-transparent" />
+      <div className="relative mx-auto grid w-full max-w-5xl items-center gap-8 rounded-[2rem] border border-blue-100 bg-white/90 p-6 shadow-2xl shadow-blue-200/70 backdrop-blur md:grid-cols-[1.05fr_0.95fr] md:p-10">
+        <div className="text-center md:text-left">
+          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-bold uppercase tracking-[0.28em] text-blue-700">
+            CPAP/BiPAP
+          </span>
+          <p className="mt-8 max-w-xl text-base leading-7 text-slate-600">
+            CPAP/BiPAP access is temporarily unavailable while this module is being upgraded.
+          </p>
+          <div className="mt-8 inline-flex rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-white shadow-lg shadow-blue-300/70">
+            Coming Soon
+          </div>
+        </div>
+        <div className="flex justify-center">
+          <img
+            src="/assets/under-construction.png"
+            alt="Under construction"
+            className="w-full max-w-md object-contain drop-shadow-2xl"
+          />
+        </div>
+      </div>
+    </main>
+  );
+}
 
 
 function ScrollToHash() {
@@ -110,6 +127,7 @@ export default function App() {
           <Route path="s3-browser" element={<S3FileBrowser />} />
           <Route path="graphs" element={<ECGGraphsPage />} />
           <Route path="support" element={<SupportComplaints />} />
+          <Route path="licenses" element={<LicensesPage />} />
         </Route>
       </Route>
 
@@ -125,23 +143,23 @@ export default function App() {
       <Route path="/version" element={<VersionDownloadPage />} />
 
         {/* CPAP/BiPAP Routes */}
-        <Route path="/cpap/login" element={<CPAPLogin />} />
-        <Route path="/cpap/dashboard" element={<CPAPDashboard />} />
-        <Route path="/cpap/auto_cpap_mode" element={<AutoCPAPMode />} />
-        <Route path="/cpap/cpap_mode" element={<CPAPMode />} />
-        <Route path="/cpap/s_mode" element={<SMode />} />
-        <Route path="/cpap/t_mode" element={<TMode />} />
-        <Route path="/cpap/st_mode" element={<STMode />} />
-        <Route path="/cpap/vaps_mode" element={<VAPSMode />} />
-        <Route path="/cpap/reports" element={<ReportsLogin />} />
-        <Route path="/cpap/reports/upload" element={<ReportsUpload />} />
-        <Route path="/cpap/reports/analytics" element={<ReportsAnalytics />} />
-        <Route path="/cpap/settings" element={<CPAPSettings />} />
-        <Route path="/cpap/settings/profile" element={<CPAPSettings />} />
-        <Route path="/cpap/settings/machine" element={<CPAPSettings />} />
-        <Route path="/cpap/settings/admin" element={<CPAPSettings />} />
-        <Route path="/settings/cpap_machine" element={<CPAPSettings />} />
-        <Route path="/settings/admin" element={<CPAPSettings />} />
+        <Route path="/cpap/login" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/dashboard" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/auto_cpap_mode" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/cpap_mode" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/s_mode" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/t_mode" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/st_mode" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/vaps_mode" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/reports" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/reports/upload" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/reports/analytics" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/settings" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/settings/profile" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/settings/machine" element={<CPAPUnderConstruction />} />
+        <Route path="/cpap/settings/admin" element={<CPAPUnderConstruction />} />
+        <Route path="/settings/cpap_machine" element={<CPAPUnderConstruction />} />
+        <Route path="/settings/admin" element={<CPAPUnderConstruction />} />
       </Routes>
       <NotificationContainer />
     </NotificationProvider>
