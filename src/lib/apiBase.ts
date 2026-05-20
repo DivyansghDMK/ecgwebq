@@ -32,9 +32,9 @@ function normalizePath(path: string): string {
 }
 
 export function getAdminApiBase(): string {
-  if (import.meta.env.DEV) {
-    return "/__admin_auth";
-  }
+  // if (import.meta.env.DEV) {
+  //   return "/__admin_auth";
+  // }
 
   return ensureProdStage(
     import.meta.env.VITE_ADMIN_AUTH_BASE_URL ||
@@ -52,9 +52,9 @@ export function getAdminProtectedApiBase(): string {
 }
 
 export function getDoctorApiBase(): string {
-  if (import.meta.env.DEV) {
-    return "/__doctor_api";
-  }
+  // if (import.meta.env.DEV) {
+  //   return "/__doctor_api";
+  // }
 
   return ensureProdStage(
     import.meta.env.VITE_DOCTOR_API_BASE_URL ||
