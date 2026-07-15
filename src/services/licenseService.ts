@@ -8,6 +8,9 @@ export interface LicenseRecord {
   backupKey?: string | null;
   tier: string;
   status: "active" | "revoked" | "unused";
+  seatNumber?: string | null;
+  seatId?: string | null;
+  seatStatus?: string | null;
   fullName?: string | null;
   doctorName?: string | null;
   orgName?: string | null;
@@ -415,6 +418,9 @@ function normalizeSeatRecord(value: unknown): LicenseRecord {
     ...normalizeLicense(source),
     status: normalizeStatus(source),
     licenseKey: pickString(source, ["license_key", "licenseKey"]) || "",
+    seatNumber: pickString(source, ["seat_number", "seatNumber"]),
+    seatId: pickString(source, ["seat_id", "seatId"]),
+    seatStatus: pickString(source, ["seat_status", "seatStatus"]),
     fullName: pickString(source, ["full_name", "fullName"]),
     doctorName: pickString(source, ["doctor_name", "doctorName"]),
     orgName: pickString(source, ["org_name", "orgName"]),

@@ -28,6 +28,10 @@
 
     "@aws/lambda-invoke-store": "^0.2.3",
 
+    "@chakra-ui/react": "^3.36.0",
+
+    "@emotion/react": "^11.14.0",
+
     "@radix-ui/react-slot": "^1.1.0",
 
     "@react-three/drei": "^10.7.7",

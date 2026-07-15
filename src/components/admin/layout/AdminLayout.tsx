@@ -68,35 +68,19 @@ export default function AdminLayout() {
               transition={{ duration: 0.3 }}
               className="flex items-center gap-4"
             >
-              {/* CardioX Logo - Orange circle with CX, matching main UI - Clickable to toggle theme */}
+              {/* CardioX Logo - Clickable to toggle theme */}
               <motion.button
                 onClick={toggleTheme}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-3 cursor-pointer group"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="flex items-center cursor-pointer group"
                 aria-label="Toggle theme"
               >
-                <motion.div
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-orange-600 to-amber-500 shadow-lg group-hover:shadow-xl transition-all duration-300"
-                  animate={{
-                    boxShadow: [
-                      "0 0 40px rgba(255, 138, 61, 0.25)",
-                      "0 0 30px rgba(255, 138, 61, 0.15)",
-                      "0 0 40px rgba(255, 138, 61, 0.25)"
-                    ]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                >
-                  <span className="font-bold text-xl text-white">CX</span>
-                </motion.div>
-                <div>
-                  <p className={`font-bold text-lg uppercase tracking-[0.3em] transition-colors ${isDarkMode ? 'text-orange-500' : 'text-orange-600'}`}>
-                    CardioX
-                  </p>
-                  <p className={`text-xs uppercase tracking-[0.3em] transition-colors ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    by Deckmount
-                  </p>
-                </div>
+                <img
+                  src="/cardiox-logo-horizontal.png"
+                  alt="CardioX by Deckmount Logo"
+                  className="h-10 w-auto object-contain"
+                />
               </motion.button>
               
               {/* Title Section */}
