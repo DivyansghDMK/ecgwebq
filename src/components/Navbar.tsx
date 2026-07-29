@@ -16,8 +16,7 @@ const navItems = [
   { href: "#analysis", label: "Analysis" },
   { href: "#waveform-analysis", label: "Waveform" },
   { href: "#device", label: "Device" },
-  { href: "#support", label: "Support" },
-  { href: "#login-section", label: "Login" }
+  { href: "#support", label: "Support" }
 ];
 
 export function Navbar() {
@@ -53,6 +52,13 @@ export function Navbar() {
               </a>
             )
           )}
+          <a
+            href="#login-section"
+            style={{ fontSize: "0.65rem", letterSpacing: "0.18em", whiteSpace: "nowrap" }}
+            className="font-medium uppercase text-white/70 transition hover:text-white"
+          >
+            Login
+          </a>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -67,13 +73,12 @@ export function Navbar() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden border-t border-white/10"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="md:hidden overflow-y-auto border-t border-white/10"
           >
-            <div className="space-y-4 px-6 pb-6 pt-4 max-h-[80vh] overflow-y-auto">
+            <div className="space-y-4 px-6 pb-6 pt-4">
               {navItems.map((item) =>
                 item.href.startsWith("/") ? (
                   <motion.div key={item.href} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -96,6 +101,13 @@ export function Navbar() {
                   </motion.a>
                 )
               )}
+              <motion.a
+                href="#login-section"
+                className={cn("block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition", "hover:bg-white/10 hover:text-white")}
+                onClick={() => setIsOpen(false)}
+              >
+                Login
+              </motion.a>
             </div>
           </motion.div>
         )}

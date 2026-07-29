@@ -129,7 +129,7 @@ export default function SupportComplaints({ className }: SupportComplaintsProps)
     const safe = (val: any) => String(val || "").toLowerCase();
 
       filtered = filtered.filter(c =>
-      safe(c.id).includes(searchTerm.toLowerCase()) ||
+      safe(c.complaint_id).includes(searchTerm.toLowerCase()) ||
       safe(c.name).includes(searchTerm.toLowerCase()) ||
       safe(c.machine_id).includes(searchTerm.toLowerCase()) ||
       safe(c.complaint).includes(searchTerm.toLowerCase()) ||
@@ -283,14 +283,14 @@ export default function SupportComplaints({ className }: SupportComplaintsProps)
       </div>
 
       {/* Filters */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-visible">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
             <Filter className="w-5 h-5" />
             Filters
           </CardTitle>
         </CardHeader>
-        <CardContent className="overflow-visible relative">
+        <CardContent className="relative">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -337,38 +337,44 @@ export default function SupportComplaints({ className }: SupportComplaintsProps)
       </Card>
 
       {/* Complaints Table */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-visible">
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="text-gray-900 dark:text-white">Complaints ({filteredComplaints.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto max-h-96">
-            <Table>
+          <div>
+            <Table className="table-fixed w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-gray-700 dark:text-gray-300">ID</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Name</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Machine ID</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[140px]">Complaint ID</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[90px]">Name</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[110px]">Machine ID</TableHead>
                   <TableHead className="text-gray-700 dark:text-gray-300">Complaint</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Source</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Status</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Priority</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Created</TableHead>
-                  <TableHead className="text-gray-700 dark:text-gray-300">Actions</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[80px]">Source</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[80px]">Status</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[80px]">Priority</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[120px]">Created</TableHead>
+                  <TableHead className="text-gray-700 dark:text-gray-300 w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedComplaints.map((complaint) => (
                   <TableRow key={complaint.id}>
-                    <TableCell className="font-medium text-gray-900 dark:text-white">{complaint.id}</TableCell>
-                    <TableCell className="text-gray-900 dark:text-white">{complaint.name}</TableCell>
-                    <TableCell className="text-gray-900 dark:text-white">{complaint.machine_id}</TableCell>
+                    <TableCell className="font-medium text-gray-900 dark:text-white whitespace-nowrap">{complaint.complaint_id}</TableCell>
                     <TableCell className="text-gray-900 dark:text-white">
-                      <div className="max-w-xs truncate" title={complaint.complaint}>
+                      <div className="truncate" title={complaint.name}>{complaint.name}</div>
+                    </TableCell>
+                    <TableCell className="text-gray-900 dark:text-white">
+                      <div className="truncate" title={complaint.machine_id}>{complaint.machine_id}</div>
+                    </TableCell>
+                    <TableCell className="text-gray-900 dark:text-white">
+                      <div className="truncate" title={complaint.complaint}>
                         {complaint.complaint}
                       </div>
                     </TableCell>
-                    <TableCell className="text-gray-900 dark:text-white">{complaint.source}</TableCell>
+                    <TableCell className="text-gray-900 dark:text-white">
+                      <div className="truncate" title={complaint.source}>{complaint.source}</div>
+                    </TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(complaint.status)}>
                         <span className="flex items-center gap-1">
@@ -382,11 +388,12 @@ export default function SupportComplaints({ className }: SupportComplaintsProps)
                         {complaint.priority || 'medium'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-gray-900 dark:text-white">{formatDate(complaint.created_at)}</TableCell>
+                    <TableCell className="text-gray-900 dark:text-white text-xs">{formatDate(complaint.created_at)}</TableCell>
                     <TableCell>
                       <Button
                         variant="outline"
                         onClick={() => setSelectedComplaint(complaint)}
+                        className="text-xs px-2 py-1 h-8"
                       >
                         View Details
                       </Button>
@@ -461,8 +468,8 @@ export default function SupportComplaints({ className }: SupportComplaintsProps)
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-900 dark:text-white">ID</label>
-                  <p className="font-mono text-gray-900 dark:text-white">{selectedComplaint.id}</p>
+                  <label className="text-sm font-medium text-gray-900 dark:text-white">Complaint ID</label>
+                  <p className="font-mono text-gray-900 dark:text-white">{selectedComplaint.complaint_id}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-900 dark:text-white">Name</label>

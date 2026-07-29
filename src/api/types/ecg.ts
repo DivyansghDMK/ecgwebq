@@ -25,10 +25,10 @@ export interface ECGRecord {
     abnormalities?: string[];
     recommendations?: string[];
     observation?: Array<{
-    name: string;
-    value: string;
-    range: string;
-  }>; // Doctor's observation
+      name: string;
+      value: string;
+      range: string;
+    }>; // Doctor's observation
     conclusions?: string[]; // Medical conclusions
     overview?: {
       maxHR?: number;
@@ -101,6 +101,14 @@ export interface S3FilesResponse {
   };
 }
 
+export interface AndroidS3FilesResponse {
+  success: boolean;
+  data: {
+    reports: S3File[];
+    total_count: number;
+  };
+}
+
 export interface S3File {
   key: string;
   name: string;
@@ -108,7 +116,17 @@ export interface S3File {
   type: string;
   lastModified: string;
   url: string;
-  recordId: string;
+  recordId?: string;
+  mobileNumber?: string; // Android-specific field
+  reportType?: string; // Android-specific field: "12-lead ECG" or "HRV"
+  // Rhythm Ultra specific fields from /android/s3-files
+  mobile_number?: string;
+  patient_name?: string;
+  machine_serial?: string;
+  report_date?: string;
+  report_type?: string;
+  report_layout?: string;
+  s3_key?: string;
 }
 
 export interface ECGReportMetadata {
@@ -132,4 +150,27 @@ export interface ECGReportMetadata {
   pdfUrl?: string;
   jsonUrl?: string;
   ecg: ECGRecord | null;
+}
+
+export interface RhythmUltraMaxReport {
+  report_id: string;
+  patient_name: string;
+  report_date: string;
+  report_type: string;
+  mobile_number: string;
+  hr: number;
+  machine_serial: string;
+  timestamp: number;
+  generated_at: string;
+  s3_key: string;
+}
+
+export interface RhythmUltraMaxReportsResponse {
+  success: boolean;
+  data: {
+    reports: RhythmUltraMaxReport[];
+    next_token: string | null;
+    has_more: boolean;
+    total_count: number;
+  };
 }

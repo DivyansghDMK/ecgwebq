@@ -1,8 +1,8 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, Download, FileText, Loader2, AlertCircle, X, Eye, EyeOff, Phone } from "lucide-react";
-import { fetchReports, fetchReport } from "../../../api/ecgApi";
-import type { ECGReportMetadata, ReportFilters } from '../../../api/types/ecg';
+import { Search, Filter, Download, FileText, Loader2, AlertCircle, X, Eye, EyeOff, Phone, Info } from "lucide-react";
+import { fetchReports, fetchReport, fetchRhythmUltraMaxReports, fetchReportPdf, fetchReportRawJsonUrl } from "../../../api/ecgApi";
+import type { ECGReportMetadata, ReportFilters, RhythmUltraMaxReport } from '../../../api/types/ecg';
 export default function ReportsPage() {
   type ReportWithUrl = ECGReportMetadata & { 
     pdfUrl?: string | null; 
@@ -11,6 +11,38 @@ export default function ReportsPage() {
     name?: string; // Added to match ECGReportMetadata
     phoneNumber?: string; // Added to match ECGReportMetadata
   };
+
+  type ReportTabType = 'cardiox' | 'rhythm-ultra-max';
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState<ReportTabType>('cardiox');
+
+  // RhythmUltraMax specific state
+  const [rhythmUltraFilters, setRhythmUltraFilters] = useState({
+    mobileNumber: "",
+    deviceId: "",
+    startDate: "",
+    endDate: "",
+  });
+  const [rhythmUltraReports, setRhythmUltraReports] = useState<RhythmUltraMaxReport[]>([]);
+  const [rhythmUltraNextToken, setRhythmUltraNextToken] = useState<string | null>(null);
+  const [rhythmUltraHasMore, setRhythmUltraHasMore] = useState(false);
+  const [rhythmUltraTotalCount, setRhythmUltraTotalCount] = useState(0);
+  const [rhythmUltraCurrentPage, setRhythmUltraCurrentPage] = useState(1);
+  const [rhythmUltraPageSize] = useState(20);
+  const [rhythmUltraAllReports, setRhythmUltraAllReports] = useState<RhythmUltraMaxReport[]>([]);
+  const [rhythmUltraLoadingMore, setRhythmUltraLoadingMore] = useState(false);
+  const [rhythmUltraSearchInProgress, setRhythmUltraSearchInProgress] = useState(false);
+  const [rhythmUltraMobileError, setRhythmUltraMobileError] = useState<string | null>(null);
+  
+  // RhythmUltraMax report selection state
+  const [rhythmSelectedReport, setRhythmSelectedReport] = useState<RhythmUltraMaxReport | null>(null);
+  const [rhythmPdfUrl, setRhythmPdfUrl] = useState<string | null>(null);
+  const [rhythmPdfLoading, setRhythmPdfLoading] = useState(false);
+  const [rhythmPdfError, setRhythmPdfError] = useState<string | null>(null);
+  const [rhythmJsonText, setRhythmJsonText] = useState<string | null>(null);
+  const [rhythmJsonLoading, setRhythmJsonLoading] = useState(false);
+  const [rhythmJsonError, setRhythmJsonError] = useState<string | null>(null);
 
   // State management
   const [filters, setFilters] = useState<ReportFilters>({
@@ -39,9 +71,55 @@ export default function ReportsPage() {
   const activeSearchController = useRef<AbortController | null>(null);
   const searchRunId = useRef(0);
   const previousBlobUrl = useRef<string | null>(null);
+  const debounceTimer = useRef<number | null>(null);
+
+  // Debounced search for RhythmUltraMax mobile number
+  const handleMobileNumberChange = useCallback((value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setRhythmUltraFilters(prev => ({ ...prev, mobileNumber: numericValue }));
+    
+    // Clear previous timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    // Reset pagination when mobile number changes
+    setRhythmUltraCurrentPage(1);
+    setRhythmUltraAllReports([]);
+    setRhythmUltraReports([]);
+    setRhythmUltraNextToken(null);
+    setRhythmUltraHasMore(false);
+    setRhythmUltraTotalCount(0);
+    setRhythmSelectedReport(null);
+    setRhythmPdfUrl(null);
+    setRhythmPdfError(null);
+    setRhythmJsonText(null);
+    setRhythmJsonError(null);
+
+    // Only search if we have at least 3 digits (debounce)
+    if (numericValue.length >= 3) {
+      debounceTimer.current = setTimeout(() => {
+        handleRhythmUltraSearch(false);
+      }, 500);
+    }
+  }, []);
+
+  // Calculate paginated reports for display
+  const getPaginatedRhythmReports = () => {
+    const startIndex = (rhythmUltraCurrentPage - 1) * rhythmUltraPageSize;
+    const endIndex = startIndex + rhythmUltraPageSize;
+    return rhythmUltraAllReports.slice(startIndex, endIndex);
+  };
+
+  const rhythmUltraTotalPages = Math.ceil(rhythmUltraAllReports.length / rhythmUltraPageSize);
 
   // Fetch reports function
   const handleSearch = async (page: number = 1) => {
+    if (activeTab === 'rhythm-ultra-max') {
+      handleRhythmUltraSearch(false);
+      return;
+    }
+    
     activeSearchController.current?.abort();
     const controller = new AbortController();
     activeSearchController.current = controller;
@@ -238,9 +316,70 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
     activeSearchController.current = null;
     searchRunId.current += 1;
 
+    if (activeTab === 'cardiox') {
+      setFilters({
+        name: "",
+        phone: "",
+        deviceId: "",
+        startDate: "",
+        endDate: "",
+      });
+      setCurrentPage(1);
+      setReports([]);
+      setTotalReports(0);
+      setTotalPages(0);
+    } else {
+      setRhythmUltraFilters({
+        mobileNumber: "",
+        deviceId: "",
+        startDate: "",
+        endDate: "",
+      });
+      setRhythmUltraReports([]);
+      setRhythmUltraAllReports([]);
+      setRhythmUltraNextToken(null);
+      setRhythmUltraHasMore(false);
+      setRhythmUltraTotalCount(0);
+      setRhythmUltraCurrentPage(1);
+      setRhythmUltraSearchInProgress(false);
+      setRhythmUltraMobileError(null);
+      setRhythmSelectedReport(null);
+      setRhythmPdfUrl(null);
+      setRhythmPdfLoading(false);
+      setRhythmPdfError(null);
+      setRhythmJsonText(null);
+      setRhythmJsonLoading(false);
+      setRhythmJsonError(null);
+    }
+    setSelectedReport(null);
+    setPdfPreviewUrl(null);
+    setJsonContent(null);
+    setLoadingJson(false);
+    setGeneratingPDF(false);
+    setError(null);
+    setLoading(false);
+  };
+
+  // Handle tab switch
+  const handleTabSwitch = (tab: ReportTabType) => {
+    if (tab === activeTab) return;
+    
+    activeSearchController.current?.abort();
+    activeSearchController.current = null;
+    searchRunId.current += 1;
+    
+    setActiveTab(tab);
+    
+    // Reset all state when switching tabs
     setFilters({
       name: "",
       phone: "",
+      deviceId: "",
+      startDate: "",
+      endDate: "",
+    });
+    setRhythmUltraFilters({
+      mobileNumber: "",
       deviceId: "",
       startDate: "",
       endDate: "",
@@ -249,6 +388,21 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
     setReports([]);
     setTotalReports(0);
     setTotalPages(0);
+    setRhythmUltraReports([]);
+    setRhythmUltraAllReports([]);
+    setRhythmUltraNextToken(null);
+    setRhythmUltraHasMore(false);
+    setRhythmUltraTotalCount(0);
+    setRhythmUltraCurrentPage(1);
+    setRhythmUltraSearchInProgress(false);
+    setRhythmUltraMobileError(null);
+    setRhythmSelectedReport(null);
+    setRhythmPdfUrl(null);
+    setRhythmPdfLoading(false);
+    setRhythmPdfError(null);
+    setRhythmJsonText(null);
+    setRhythmJsonLoading(false);
+    setRhythmJsonError(null);
     setSelectedReport(null);
     setPdfPreviewUrl(null);
     setJsonContent(null);
@@ -256,6 +410,159 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
     setGeneratingPDF(false);
     setError(null);
     setLoading(false);
+  };
+
+  // RhythmUltraMax search function
+  const handleRhythmUltraSearch = async (loadMore: boolean = false) => {
+    // Prevent re-triggering if search is already in progress
+    if (!loadMore && rhythmUltraSearchInProgress) {
+      return;
+    }
+
+    activeSearchController.current?.abort();
+    const controller = new AbortController();
+    activeSearchController.current = controller;
+    const runId = searchRunId.current + 1;
+    searchRunId.current = runId;
+
+    // Validation: either mobile number or device ID is required
+    const hasMobileNumber = rhythmUltraFilters.mobileNumber.trim();
+    const hasDeviceId = rhythmUltraFilters.deviceId.trim();
+    if (!hasMobileNumber && !hasDeviceId) {
+      setError("Enter a mobile number or device ID to search");
+      return;
+    }
+
+    // Mobile number validation (only when using mobile number, not device ID)
+    if (hasMobileNumber && !hasDeviceId) {
+      const mobileRegex = /^[6-9]\d{9}$/;
+      if (!mobileRegex.test(hasMobileNumber)) {
+        setRhythmUltraMobileError("Enter a valid 10-digit mobile number");
+        return;
+      }
+    }
+
+    // Clear mobile error if using device ID or if mobile is valid
+    setRhythmUltraMobileError(null);
+    // Clear general error when search starts
+    setError(null);
+
+    if (loadMore) {
+      setRhythmUltraLoadingMore(true);
+    } else {
+      setLoading(true);
+      setRhythmUltraSearchInProgress(true);
+    }
+    setSelectedReport(null);
+    setPdfPreviewUrl(null);
+
+    try {
+      let allReports: RhythmUltraMaxReport[] = [];
+      let nextToken: string | null = null;
+      let hasMore = true;
+      let totalCount = 0;
+
+      // Fetch all pages if not loading more
+      if (!loadMore) {
+        while (hasMore) {
+          const response = await fetchRhythmUltraMaxReports(
+            hasDeviceId ? undefined : rhythmUltraFilters.mobileNumber,
+            hasDeviceId ? rhythmUltraFilters.deviceId : undefined,
+            rhythmUltraFilters.startDate || undefined,
+            rhythmUltraFilters.endDate || undefined,
+            nextToken || undefined
+          );
+
+          if (controller.signal.aborted || searchRunId.current !== runId) {
+            return;
+          }
+
+          // Log response shape for debugging
+          console.log('RhythmUltraMax API Response:', response);
+
+          // Safely access response data with error handling
+          if (!response || !response.data) {
+            throw new Error('Invalid response: missing data field');
+          }
+
+          const responseData = response.data;
+          if (!Array.isArray(responseData.reports)) {
+            throw new Error('Invalid response: reports is not an array');
+          }
+
+          allReports = [...allReports, ...responseData.reports];
+          nextToken = responseData.next_token;
+          hasMore = responseData.has_more;
+          totalCount = responseData.total_count;
+        }
+        setRhythmUltraAllReports(allReports);
+      } else {
+        // Load more mode - just fetch next page
+        const response = await fetchRhythmUltraMaxReports(
+          hasDeviceId ? undefined : rhythmUltraFilters.mobileNumber,
+          hasDeviceId ? rhythmUltraFilters.deviceId : undefined,
+          rhythmUltraFilters.startDate || undefined,
+          rhythmUltraFilters.endDate || undefined,
+          rhythmUltraNextToken || undefined
+        );
+
+        if (controller.signal.aborted || searchRunId.current !== runId) {
+          return;
+        }
+
+        // Log response shape for debugging
+        console.log('RhythmUltraMax API Response (load more):', response);
+
+        // Safely access response data with error handling
+        if (!response || !response.data) {
+          throw new Error('Invalid response: missing data field');
+        }
+
+        const responseData = response.data;
+        if (!Array.isArray(responseData.reports)) {
+          throw new Error('Invalid response: reports is not an array');
+        }
+
+        setRhythmUltraAllReports(prev => [...prev, ...responseData.reports]);
+        nextToken = responseData.next_token;
+        hasMore = responseData.has_more;
+        totalCount = responseData.total_count;
+      }
+
+      setRhythmUltraNextToken(nextToken);
+      setRhythmUltraHasMore(hasMore);
+      setRhythmUltraTotalCount(totalCount);
+
+      if (allReports.length === 0 && !loadMore) {
+        setError("No reports found matching your search criteria.");
+      } else {
+        setError(null);
+      }
+    } catch (err: any) {
+      console.error('RhythmUltraMax search error:', err);
+      if (controller.signal.aborted || err?.name === "AbortError" || searchRunId.current !== runId) {
+        return;
+      }
+      setError(err.message || "Failed to fetch reports. Please try again.");
+      if (!loadMore) {
+        setRhythmUltraAllReports([]);
+        setRhythmUltraNextToken(null);
+        setRhythmUltraHasMore(false);
+        setRhythmUltraTotalCount(0);
+      }
+    } finally {
+      if (searchRunId.current === runId) {
+        if (loadMore) {
+          setRhythmUltraLoadingMore(false);
+        } else {
+          setLoading(false);
+          setRhythmUltraSearchInProgress(false);
+        }
+        if (activeSearchController.current === controller) {
+          activeSearchController.current = null;
+        }
+      }
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -277,6 +584,67 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
     }
   };
 
+  // Handle RhythmUltraMax report selection
+  const handleRhythmReportSelect = async (report: RhythmUltraMaxReport) => {
+    setRhythmSelectedReport(report);
+    setRhythmPdfUrl(null);
+    setRhythmPdfError(null);
+    setRhythmJsonText(null);
+    setRhythmJsonError(null);
+
+    // Handle PDF fetch (skip for HRV reports)
+    if (report.report_type === 'hrv') {
+      setRhythmPdfError('PDF preview is not available for HRV reports yet.');
+    } else {
+      setRhythmPdfLoading(true);
+      try {
+        const pdfData = await fetchReportPdf(report.s3_key);
+        setRhythmPdfUrl(pdfData.url);
+      } catch (err) {
+        setRhythmPdfError('Failed to load PDF preview');
+      } finally {
+        setRhythmPdfLoading(false);
+      }
+    }
+
+    // Handle JSON fetch (parallel)
+    setRhythmJsonLoading(true);
+    try {
+      console.log('Fetching JSON URL for s3_key:', report.s3_key);
+      const jsonData = await fetchReportRawJsonUrl(report.s3_key);
+      console.log('JSON URL response:', jsonData);
+      
+      if (!jsonData.data?.url) {
+        throw new Error('No URL returned from API');
+      }
+      
+      const jsonContentResponse = await fetch(jsonData.data.url);
+      console.log('JSON content response status:', jsonContentResponse.status);
+      
+      if (!jsonContentResponse.ok) {
+        throw new Error(`Failed to fetch JSON content: ${jsonContentResponse.status}`);
+      }
+      
+      const rawText = await jsonContentResponse.text();
+      console.log('Raw text length:', rawText.length);
+      
+      try {
+        const parsed = JSON.parse(rawText);
+        setRhythmJsonText(JSON.stringify(parsed, null, 2));
+        console.log('JSON parsed successfully');
+      } catch (parseErr) {
+        console.error('JSON parse error:', parseErr);
+        // Fallback to raw text if JSON parse fails
+        setRhythmJsonText(rawText);
+      }
+    } catch (err) {
+      console.error('JSON fetch error:', err);
+      setRhythmJsonError(`Failed to load JSON content: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setRhythmJsonLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Mock Data Notice - Only show when using mock data */}
@@ -288,6 +656,36 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
           </p>
         </div>
       )}
+      {/* Tab Control */}
+      <div className="flex items-center justify-center mb-6">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+          <motion.button
+            onClick={() => handleTabSwitch('cardiox')}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            className={`px-6 py-2.5 rounded-md font-medium text-sm transition-all duration-200 ${
+              activeTab === 'cardiox'
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            Reports by CardioX
+          </motion.button>
+          <motion.button
+            onClick={() => handleTabSwitch('rhythm-ultra-max')}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            className={`px-6 py-2.5 rounded-md font-medium text-sm transition-all duration-200 ${
+              activeTab === 'rhythm-ultra-max'
+                ? 'bg-orange-500 text-white shadow-md'
+                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+            }`}
+          >
+            Reports by RhythmUltraMax
+          </motion.button>
+        </div>
+      </div>
+
       {/* Search & Filter Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -316,12 +714,12 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
 </motion.button>
             <motion.button
   onClick={() => handleSearch(1)}
-  disabled={loading}
+  disabled={loading || (activeTab === 'rhythm-ultra-max' && rhythmUltraSearchInProgress)}
   whileHover={{ y: -2, scale: 1.02 }}
   whileTap={{ scale: 0.98 }}
   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:from-blue-600 hover:to-indigo-700 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
 >
-  {loading ? (
+  {loading || (activeTab === 'rhythm-ultra-max' && rhythmUltraSearchInProgress) ? (
     <>
       <Loader2 size={18} className="animate-spin" />
       Searching...
@@ -354,106 +752,144 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
               className="overflow-hidden"
             >
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-700">
-                {/* Name Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
-                    <FileText size={16} className="text-emerald-600 dark:text-emerald-300" />
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.name || ""}
-                    onChange={(e) => handleFilterChange("name", e.target.value)}
-                    placeholder="Enter patient name"
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
-                    onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
+                {activeTab === 'cardiox' ? (
+                  <>
+                    {/* Device ID Filter - CardioX */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
+                        <Filter size={16} className="text-emerald-600 dark:text-emerald-300" />
+                        Device ID
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={4}
+                        value={filters.deviceId || ""}
+                        onChange={(e) => handleFilterChange("deviceId", e.target.value)}
+                        placeholder="Enter device ID"
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleSearch();
+                          }
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Mobile Number Filter - RhythmUltraMax */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
+                        <Phone size={16} className="text-emerald-600 dark:text-emerald-300" />
+                        Mobile Number
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={10}
+                        value={rhythmUltraFilters.mobileNumber || ""}
+                        onChange={(e) => {
+                          handleMobileNumberChange(e.target.value);
+                          // Clear mobile error when user starts typing
+                          if (rhythmUltraMobileError) {
+                            setRhythmUltraMobileError(null);
+                          }
+                          // Clear general error when user starts typing
+                          if (error) {
+                            setError(null);
+                          }
+                        }}
+                        placeholder="Enter mobile number"
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleRhythmUltraSearch(false);
+                          }
+                          if (!/[0-9]/.test(e.key) && e.key !== "Enter" && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "Tab" && e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
+                            e.preventDefault();
+                          }
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pastedText = e.clipboardData.getData('text');
+                          handleMobileNumberChange(pastedText);
+                        }}
+                      />
+                      {rhythmUltraMobileError && (
+                        <p className="text-xs text-red-600 dark:text-red-400">{rhythmUltraMobileError}</p>
+                      )}
+                    </div>
 
-                {/* Phone Number Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
-                    <Phone size={16} className="text-emerald-600 dark:text-emerald-300" />
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={filters.phone || ""}
-                    onChange={(e) => handleNumericInput("phone", e.target.value)}
-                    placeholder="Enter phone number (numbers only)"
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
-                    onKeyPress={(e) => {
-                      // Prevent non-numeric characters from being entered
-                      if (!/[0-9]/.test(e.key) && e.key !== "Enter" && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "Tab" && e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
-                        e.preventDefault();
-                      }
-                      if (e.key === "Enter") {
-                        handleSearch();
-                      }
-                    }}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pastedText = e.clipboardData.getData('text');
-                      handleNumericInput("phone", pastedText);
-                    }}
-                  />
-                </div>
-
-                {/* Device ID Filter */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
-                    <Filter size={16} className="text-emerald-600 dark:text-emerald-300" />
-                    Device ID
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={filters.deviceId || ""}
-                    onChange={(e) => handleNumericInput("deviceId", e.target.value)}
-                    placeholder="Enter device ID (numbers only)"
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
-                    onKeyPress={(e) => {
-                      // Prevent non-numeric characters from being entered
-                      if (!/[0-9]/.test(e.key) && e.key !== "Enter" && e.key !== "Backspace" && e.key !== "Delete" && e.key !== "Tab" && e.key !== "ArrowLeft" && e.key !== "ArrowRight") {
-                        e.preventDefault();
-                      }
-                      if (e.key === "Enter") {
-                        handleSearch();
-                      }
-                    }}
-                    onPaste={(e) => {
-                      e.preventDefault();
-                      const pastedText = e.clipboardData.getData('text');
-                      handleNumericInput("deviceId", pastedText);
-                    }}
-                  />
-                </div>
+                    {/* Device ID Filter - RhythmUltraMax */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
+                        <Filter size={16} className="text-emerald-600 dark:text-emerald-300" />
+                        Device ID
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={4}
+                        value={rhythmUltraFilters.deviceId || ""}
+                        onChange={(e) => {
+                          setRhythmUltraFilters(prev => ({ ...prev, deviceId: e.target.value }));
+                          // Clear mobile error when user types in device ID (device ID takes priority)
+                          if (rhythmUltraMobileError) {
+                            setRhythmUltraMobileError(null);
+                          }
+                          // Clear general error when user starts typing
+                          if (error) {
+                            setError(null);
+                          }
+                        }}
+                        placeholder="Enter device ID"
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleRhythmUltraSearch(false);
+                          }
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
                 
-                {/* Start Date Filter */}
+                {/* Start Date Filter - Both tabs */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex items-center gap-2">
                     Start Date
                   </label>
                   <input
                     type="date"
-                    value={filters.startDate || ""}
-                    onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                    value={activeTab === 'cardiox' ? (filters.startDate || "") : (rhythmUltraFilters.startDate || "")}
+                    onChange={(e) => {
+                      if (activeTab === 'cardiox') {
+                        handleFilterChange("startDate", e.target.value);
+                      } else {
+                        setRhythmUltraFilters(prev => ({ ...prev, startDate: e.target.value }));
+                      }
+                    }}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
                   />
                 </div>
                 
-                {/* End Date Filter */}
+                {/* End Date Filter - Both tabs */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700 dark:text-slate-100 flex-items-center gap-2 flex">
                     End Date
                   </label>
                   <input
                     type="date"
-                    value={filters.endDate || ""}
-                    onChange={(e) => handleFilterChange("endDate", e.target.value)}
+                    value={activeTab === 'cardiox' ? (filters.endDate || "") : (rhythmUltraFilters.endDate || "")}
+                    onChange={(e) => {
+                      if (activeTab === 'cardiox') {
+                        handleFilterChange("endDate", e.target.value);
+                      } else {
+                        setRhythmUltraFilters(prev => ({ ...prev, endDate: e.target.value }));
+                      }
+                    }}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
                   />
                 </div>
@@ -498,10 +934,17 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
                 <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
               </div>
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Reports</h3>
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">Reports</h3>
+                {activeTab === 'rhythm-ultra-max' && rhythmUltraAllReports.length > 0 && (
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    Total reports for mobile number: <span className="font-bold text-emerald-600 dark:text-emerald-400">{rhythmUltraAllReports.length}</span>
+                  </p>
+                )}
+              </div>
             </div>
             <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold px-2.5 py-1 rounded-full">
-              {totalReports}
+              {activeTab === 'cardiox' ? totalReports : rhythmUltraAllReports.length}
             </span>
           </div>
 
@@ -519,7 +962,7 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                 <Loader2 className="animate-spin text-emerald-600" size={40} />
                 <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Loading reports...</p>
               </div>
-            ) : reports.length === 0 ? (
+            ) : (activeTab === 'cardiox' ? reports.length === 0 : getPaginatedRhythmReports().length === 0) ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <FileText className="text-slate-300 dark:text-slate-600" size={48} />
                 <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">
@@ -527,133 +970,265 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
                 </p>
               </div>
             ) : (
-              reports.map((report, idx) => (
-                <div
-                  key={report.id}
-                  onClick={() => handleReportSelect(report)}
-                  className={`grid grid-cols-5 border-t border-slate-200 dark:border-slate-700 cursor-pointer transition-colors ${
-                    selectedReport?.id === report.id ? "bg-emerald-50 dark:bg-emerald-900/30" : "odd:bg-white dark:bg-slate-900 even:bg-slate-50 dark:even:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  <div className="p-3 text-slate-900 dark:text-slate-50 font-medium">{report.patientName || report.name || report.patient?.name}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200 border-x border-slate-200 dark:border-slate-700">{report.patient?.phone || report.phoneNumber}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200">{report.deviceId}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{formatDate(report.timestamp || report.date || "")}</div>
-                  <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{report.type}</div>
-                </div>
-              ))
+              (activeTab === 'cardiox' ? reports : getPaginatedRhythmReports()).map((report, idx) => {
+                const isCardiox = activeTab === 'cardiox';
+                const reportId = isCardiox ? (report as ReportWithUrl).id : (report as RhythmUltraMaxReport).report_id;
+                const name = isCardiox 
+                  ? ((report as ReportWithUrl).patientName || (report as ReportWithUrl).name || (report as ReportWithUrl).patient?.name)
+                  : (report as RhythmUltraMaxReport).patient_name;
+                const phone = isCardiox 
+                  ? ((report as ReportWithUrl).patient?.phone || (report as ReportWithUrl).phoneNumber)
+                  : (report as RhythmUltraMaxReport).mobile_number;
+                const deviceId = isCardiox 
+                  ? (report as ReportWithUrl).deviceId
+                  : (report as RhythmUltraMaxReport).machine_serial;
+                const date = isCardiox 
+                  ? formatDate((report as ReportWithUrl).timestamp || (report as ReportWithUrl).date || "")
+                  : (report as RhythmUltraMaxReport).report_date;
+                const type = isCardiox 
+                  ? (report as ReportWithUrl).type
+                  : (report as RhythmUltraMaxReport).report_type;
+                const isSelected = isCardiox 
+                  ? selectedReport?.id === reportId
+                  : rhythmSelectedReport?.report_id === reportId;
+
+                return (
+                  <div
+                    key={reportId}
+                    onClick={() => isCardiox ? handleReportSelect(report as ReportWithUrl) : handleRhythmReportSelect(report as RhythmUltraMaxReport)}
+                    className={`grid grid-cols-5 border-t border-slate-200 dark:border-slate-700 cursor-pointer transition-colors ${
+                      isSelected ? "bg-emerald-50 dark:bg-emerald-900/30" : "odd:bg-white dark:bg-slate-900 even:bg-slate-50 dark:even:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    <div className="p-3 text-slate-900 dark:text-slate-50 font-medium">{name}</div>
+                    <div className="p-3 text-slate-700 dark:text-slate-200 border-x border-slate-200 dark:border-slate-700">{phone}</div>
+                    <div className="p-3 text-slate-700 dark:text-slate-200">{deviceId}</div>
+                    <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{date}</div>
+                    <div className="p-3 text-slate-700 dark:text-slate-200 border-l border-slate-200 dark:border-slate-700">{type}</div>
+                  </div>
+                );
+              })
             )}
             </div>
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                    Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((currentPage - 1) * reportsPerPage) + 1}</span> to{' '}
-                    <span className="font-bold text-slate-900 dark:text-slate-100">
-                      {Math.min(currentPage * reportsPerPage, totalReports)}
-                    </span>{' '}
-                    of <span className="font-bold text-slate-900 dark:text-slate-100">{totalReports}</span> results
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage <= 1}
-                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7 7M15 5l-7-7 7 7" />
-                    </svg>
-                    Previous
-                  </button>
-                  
-                  {/* Page Numbers */}
-                  <div className="flex items-center space-x-1">
-                    {(() => {
-                      const pages = [];
-                      const maxVisible = 7;
-                      const startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-                      const endPage = Math.min(totalPages, startPage + maxVisible - 1);
-                      
-                      // Always show first page
-                      if (startPage > 1) {
-                        pages.push(
-                          <button
-                            key={1}
-                            onClick={() => handlePageChange(1)}
-                            className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
-                          >
-                            1
-                          </button>
-                        );
-                        if (startPage > 2) {
-                          pages.push(
-                            <span key="start-ellipsis" className="px-2 text-slate-500">...</span>
-                          );
-                        }
-                      }
-                      
-                      // Show visible pages
-                      for (let i = startPage; i <= endPage; i++) {
-                        pages.push(
-                          <button
-                            key={i}
-                            onClick={() => handlePageChange(i)}
-                            className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                              i === currentPage
-                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
-                                : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
-                            }`}
-                          >
-                            {i}
-                          </button>
-                        );
-                      }
-                      
-                      // Always show last page
-                      if (endPage < totalPages) {
-                        if (endPage < totalPages - 1) {
-                          pages.push(
-                            <span key="end-ellipsis" className="px-2 text-slate-500">...</span>
-                          );
-                        }
-                        pages.push(
-                          <button
-                            key={totalPages}
-                            onClick={() => handlePageChange(totalPages)}
-                            className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
-                          >
-                            {totalPages}
-                          </button>
-                        );
-                      }
-                      
-                      return pages;
-                    })()}
+          {activeTab === 'cardiox' ? (
+            // CardioX: Offset-based pagination
+            totalPages > 1 && (
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                      Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((currentPage - 1) * reportsPerPage) + 1}</span> to{' '}
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
+                        {Math.min(currentPage * reportsPerPage, totalReports)}
+                      </span>{' '}
+                      of <span className="font-bold text-slate-900 dark:text-slate-100">{totalReports}</span> results
+                    </p>
                   </div>
-                  
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages}
-                    className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
-                  >
-                    Next
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7 7" />
-                    </svg>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage <= 1}
+                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7M15 5l-7-7 7-7" />
+                      </svg>
+                      Previous
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {(() => {
+                        const pages = [];
+                        const maxVisible = 7;
+                        const startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                        const endPage = Math.min(totalPages, startPage + maxVisible - 1);
+                        
+                        // Always show first page
+                        if (startPage > 1) {
+                          pages.push(
+                            <button
+                              key={1}
+                              onClick={() => handlePageChange(1)}
+                              className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
+                            >
+                              1
+                            </button>
+                          );
+                          if (startPage > 2) {
+                            pages.push(
+                              <span key="start-ellipsis" className="px-2 text-slate-500">...</span>
+                            );
+                          }
+                        }
+                        
+                        // Show visible pages
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => handlePageChange(i)}
+                              className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                i === currentPage
+                                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
+                                  : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                        
+                        // Always show last page
+                        if (endPage < totalPages) {
+                          if (endPage < totalPages - 1) {
+                            pages.push(
+                              <span key="end-ellipsis" className="px-2 text-slate-500">...</span>
+                            );
+                          }
+                          pages.push(
+                            <button
+                              key={totalPages}
+                              onClick={() => handlePageChange(totalPages)}
+                              className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
+                            >
+                              {totalPages}
+                            </button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                    </div>
+                    
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage >= totalPages}
+                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                    >
+                      Next
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7 7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )
+          ) : (
+            // RhythmUltraMax: Client-side pagination
+            rhythmUltraTotalPages > 1 && (
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                      Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((rhythmUltraCurrentPage - 1) * rhythmUltraPageSize) + 1}</span> to{' '}
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
+                        {Math.min(rhythmUltraCurrentPage * rhythmUltraPageSize, rhythmUltraAllReports.length)}
+                      </span>{' '}
+                      of <span className="font-bold text-slate-900 dark:text-slate-100">{rhythmUltraAllReports.length}</span> results
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setRhythmUltraCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={rhythmUltraCurrentPage <= 1}
+                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7M15 5l-7-7 7-7" />
+                      </svg>
+                      Previous
+                    </button>
+                    
+                    {/* Page Numbers */}
+                    <div className="flex items-center space-x-1">
+                      {(() => {
+                        const pages = [];
+                        const maxVisible = 7;
+                        const startPage = Math.max(1, rhythmUltraCurrentPage - Math.floor(maxVisible / 2));
+                        const endPage = Math.min(rhythmUltraTotalPages, startPage + maxVisible - 1);
+                        
+                        // Always show first page
+                        if (startPage > 1) {
+                          pages.push(
+                            <button
+                              key={1}
+                              onClick={() => setRhythmUltraCurrentPage(1)}
+                              className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
+                            >
+                              1
+                            </button>
+                          );
+                          if (startPage > 2) {
+                            pages.push(
+                              <span key="start-ellipsis" className="px-2 text-slate-500">...</span>
+                            );
+                          }
+                        }
+                        
+                        // Show visible pages
+                        for (let i = startPage; i <= endPage; i++) {
+                          pages.push(
+                            <button
+                              key={i}
+                              onClick={() => setRhythmUltraCurrentPage(i)}
+                              className={`relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                i === rhythmUltraCurrentPage
+                                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
+                                  : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          );
+                        }
+                        
+                        // Always show last page
+                        if (endPage < rhythmUltraTotalPages) {
+                          if (endPage < rhythmUltraTotalPages - 1) {
+                            pages.push(
+                              <span key="end-ellipsis" className="px-2 text-slate-500">...</span>
+                            );
+                          }
+                          pages.push(
+                            <button
+                              key={rhythmUltraTotalPages}
+                              onClick={() => setRhythmUltraCurrentPage(rhythmUltraTotalPages)}
+                              className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md"
+                            >
+                              {rhythmUltraTotalPages}
+                            </button>
+                          );
+                        }
+                        
+                        return pages;
+                      })()}
+                    </div>
+                    
+                    <button
+                      onClick={() => setRhythmUltraCurrentPage(prev => Math.min(rhythmUltraTotalPages, prev + 1))}
+                      disabled={rhythmUltraCurrentPage >= rhythmUltraTotalPages}
+                      className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
+                    >
+                      Next
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7 7" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
           )}
         </motion.div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {activeTab === 'cardiox' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Report Details Card */}
         <div className="bg-gradient-to-br from-purple-50/30 to-pink-50/20 dark:from-slate-900 dark:to-slate-900 rounded-xl border border-purple-200/50 dark:border-slate-700 shadow-sm p-6 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-6">
@@ -852,6 +1427,125 @@ const handleFilterChange = (key: keyof ReportFilters, value: string) => {
           )}
         </div>
       </div>
+      )}
+
+      {/* RhythmUltraMax Report Details Panels */}
+      {activeTab === 'rhythm-ultra-max' && rhythmSelectedReport && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Report Details Card */}
+          <div className="bg-gradient-to-br from-purple-50/30 to-pink-50/20 dark:from-slate-900 dark:to-slate-900 rounded-xl border border-purple-200/50 dark:border-slate-700 shadow-sm p-6 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <FileText className="w-5 h-5 text-purple-500 dark:text-purple-200" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-slate-50">Report Details</h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Patient Name:</div>
+                <div className="text-slate-700 dark:text-slate-300">{rhythmSelectedReport.patient_name || '-'}</div>
+                
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Mobile Number:</div>
+                <div className="text-slate-700 dark:text-slate-300">{rhythmSelectedReport.mobile_number || '-'}</div>
+                
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Device ID:</div>
+                <div className="text-slate-700 dark:text-slate-300">{rhythmSelectedReport.machine_serial || '-'}</div>
+                
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Report Date:</div>
+                <div className="text-slate-700 dark:text-slate-300">{rhythmSelectedReport.report_date || '-'}</div>
+                
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Report Type:</div>
+                <div className="text-slate-700 dark:text-slate-300">
+                  <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">
+                    {rhythmSelectedReport.report_type || '-'}
+                  </span>
+                </div>
+                
+                <div className="font-semibold text-slate-800 dark:text-slate-200">Report ID:</div>
+                <div className="text-slate-700 dark:text-slate-300 text-xs">{rhythmSelectedReport.report_id || '-'}</div>
+                
+                {rhythmSelectedReport.hr !== null && (
+                  <>
+                    <div className="font-semibold text-slate-800 dark:text-slate-200">Heart Rate:</div>
+                    <div className="text-slate-700 dark:text-slate-300">{rhythmSelectedReport.hr} bpm</div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* JSON Preview Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
+                <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">JSON Preview</h3>
+            </div>
+
+            {rhythmJsonLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <Loader2 className="animate-spin text-emerald-600" size={40} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Loading JSON content...</p>
+              </div>
+            ) : rhythmJsonError ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <AlertCircle className="text-red-500" size={48} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">{rhythmJsonError}</p>
+              </div>
+            ) : rhythmJsonText ? (
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                <div className="max-h-[400px] overflow-y-auto p-4">
+                  <pre className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words font-mono">
+                    {rhythmJsonText}
+                  </pre>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <FileText className="text-slate-300 dark:text-slate-600" size={48} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">JSON content will appear here</p>
+              </div>
+            )}
+          </div>
+
+          {/* PDF Preview Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-6">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900 rounded-lg">
+                <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-300" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-50">PDF Preview</h3>
+            </div>
+
+            {rhythmPdfLoading ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <Loader2 className="animate-spin text-emerald-600" size={40} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">Loading PDF preview...</p>
+              </div>
+            ) : rhythmPdfError ? (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <AlertCircle className="text-yellow-500" size={48} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">{rhythmPdfError}</p>
+              </div>
+            ) : rhythmPdfUrl ? (
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                <iframe
+                  src={rhythmPdfUrl}
+                  className="w-full h-[400px] border-0 bg-white"
+                  title="PDF Preview"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700">
+                <FileText className="text-slate-300 dark:text-slate-600" size={48} />
+                <p className="text-slate-600 dark:text-slate-300 mt-4 text-sm">PDF will appear here after generation</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       
       <div className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3">
         <div className="flex flex-wrap gap-4">

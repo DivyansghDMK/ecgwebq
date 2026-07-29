@@ -2,8 +2,8 @@
  * Frontend API Client for ECG Services
  */
 
-import type { 
-  ECGUploadPayload, 
+import type {
+  ECGUploadPayload,
   ReportUrlsResponse,
   ReportsResponse,
   UploadResponse,
@@ -11,7 +11,17 @@ import type {
   S3FilesResponse,
   ECGReportMetadata,
   S3File,
+  RhythmUltraMaxReportsResponse,
+  AndroidS3FilesResponse,
+  AndroidS3FilesPageResult,
 } from './types/ecg';
+import type {
+  AnalyticsSummaryResponse,
+  DeviceLookupAPIResponse,
+  RhythmUltraDeviceLookupAPIResponse,
+  CardioXDeviceLookupAPIResponse,
+  RhythmUsersLookupAPIResponse,
+} from '@/components/admin/devices/types';
 import { buildAuthHeaders } from '@/lib/auth';
 import { getAdminProtectedApiBase, getDoctorApiBase, joinApiUrl } from '@/lib/apiBase';
 import { ADMIN_ROUTES, DOCTOR_ROUTES } from '@/lib/apiRoutes';
@@ -115,7 +125,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     }
 
     const jsonResponse = await response.json();
-    
+
     return jsonResponse;
   } catch (error) {
     throw error;
@@ -202,7 +212,7 @@ async function fetchAllS3Files(searchTerm: string = '', signal?: AbortSignal): P
   const pageLimit = 100;
   const firstPage = await fetchS3Files(1, pageLimit, searchTerm, signal);
   const allFiles = [...(firstPage.files || [])];
-  
+
   // Cap to maximum 10 pages (1000 items) to prevent huge delays, fire all concurrently
   const totalPages = Math.min(firstPage.pagination?.totalPages || 1, 10);
   const resolvedLimit = firstPage.pagination?.limit || pageLimit;
@@ -212,7 +222,7 @@ async function fetchAllS3Files(searchTerm: string = '', signal?: AbortSignal): P
     for (let p = 2; p <= totalPages; p++) {
       promises.push(fetchS3Files(p, resolvedLimit, searchTerm, signal));
     }
-    
+
     const results = await Promise.all(promises);
     results.forEach((res) => {
       allFiles.push(...(res.files || []));
@@ -350,7 +360,145 @@ function parseFilterDate(value: string | undefined, endOfDay: boolean): Date | n
 
 /* ======================= S3 FILE BROWSER ======================= */
 
+type S3FilesApiResponse = {
+  success?: boolean;
+  data?: { files?: S3File[]; pagination?: S3FilesResponse['pagination'] } | S3File[];
+  metadata?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+  };
+  files?: S3File[];
+  pagination?: S3FilesResponse['pagination'];
+};
+
+function normalizeS3FilesResponse(
+  response: S3FilesApiResponse,
+  page: number,
+  limit: number
+): S3FilesResponse {
+  let files: S3File[] = [];
+
+  if ('data' in response && response.data) {
+    if (Array.isArray(response.data)) {
+      files = response.data;
+    } else {
+      files = response.data.files ?? [];
+    }
+  } else if (response.files) {
+    files = response.files;
+  }
+
+  const nestedPagination =
+    response.data && !Array.isArray(response.data) ? response.data.pagination : undefined;
+  const meta = response.metadata;
+  const existingPagination = nestedPagination ?? response.pagination;
+
+  const resolvedPage = meta?.page ?? existingPagination?.page ?? page;
+  const resolvedLimit = meta?.limit ?? existingPagination?.limit ?? limit;
+  const total = meta?.total ?? existingPagination?.total ?? files.length;
+  const totalPages =
+    meta?.totalPages ??
+    existingPagination?.totalPages ??
+    Math.max(1, Math.ceil(total / resolvedLimit));
+
+  return {
+    files,
+    pagination: {
+      total,
+      page: resolvedPage,
+      limit: resolvedLimit,
+      totalPages,
+      hasNext: meta?.hasNext ?? existingPagination?.hasNext ?? resolvedPage < totalPages,
+      hasPrev: meta?.hasPrev ?? existingPagination?.hasPrev ?? resolvedPage > 1,
+    },
+  };
+}
+
 export async function fetchS3Files(
+  page: number = 1,
+  limit: number = 50,
+  search: string = '',
+  signal?: AbortSignal,
+  source?: string
+): Promise<S3FilesResponse> {
+  const params = new URLSearchParams();
+  params.append('page', page.toString());
+  params.append('limit', limit.toString());
+  if (search) params.append('search', search);
+  // Only send source parameter if it's not the default 'cardiox' and backend supports it
+  if (source && source !== 'cardiox') params.append('source', source);
+
+  const response = await apiRequest<S3FilesApiResponse | S3FilesResponse>(
+    `${ADMIN_ROUTES.s3Files}?${params.toString()}`,
+    { signal }
+  );
+
+  console.log('[fetchS3Files] raw response:', response);
+
+  if ('data' in response || 'metadata' in response) {
+    return normalizeS3FilesResponse(response as S3FilesApiResponse, page, limit);
+  }
+
+  const legacyResponse = response as S3FilesResponse;
+  if (legacyResponse.pagination) {
+    return legacyResponse;
+  }
+
+  return normalizeS3FilesResponse(legacyResponse, page, limit);
+}
+
+/* ======================= ANDROID REPORTS SEARCH (RHYTHM ULTRA MAX) ======================= */
+
+export async function fetchRhythmUltraMaxReports(
+  mobileNumber?: string,
+  deviceId?: string,
+  startDate?: string,
+  endDate?: string,
+  nextToken?: string
+): Promise<RhythmUltraMaxReportsResponse> {
+  const params = new URLSearchParams();
+  if (deviceId) {
+    params.append('device_id', deviceId);
+  } else if (mobileNumber) {
+    params.append('mobile_no', mobileNumber);
+  }
+  if (startDate) params.append('start_date', startDate);
+  if (endDate) params.append('end_date', endDate);
+  if (nextToken) params.append('nextToken', nextToken);
+
+  const response = await apiRequest<RhythmUltraMaxReportsResponse>(
+    `/android/reports/search?${params.toString()}`
+  );
+  return response;
+}
+
+export async function fetchReportPdf(s3Key: string): Promise<{ url: string; cached: boolean }> {
+  const params = new URLSearchParams();
+  params.append('key', s3Key);
+
+  const response = await apiRequest<{ url: string; cached: boolean }>(
+    `/android/reports/pdf?${params.toString()}`
+  );
+  return response;
+}
+
+export async function fetchReportRawJsonUrl(s3Key: string): Promise<{ success: boolean; data: { url: string } }> {
+  const params = new URLSearchParams();
+  params.append('key', s3Key);
+
+  const response = await apiRequest<{ success: boolean; data: { url: string } }>(
+    `/android/s3-files/file-url?${params.toString()}`
+  );
+  return response;
+}
+
+/* ======================= ANDROID S3 FILES (RHYTHM ULTRA) ======================= */
+
+export async function fetchAndroidS3Files(
   page: number = 1,
   limit: number = 50,
   search: string = '',
@@ -362,13 +510,48 @@ export async function fetchS3Files(
   if (search) params.append('search', search);
 
   const response = await apiRequest<{ success: boolean; data: S3FilesResponse } | S3FilesResponse>(
-    `${ADMIN_ROUTES.s3Files}?${params.toString()}`,
+    `/android/s3-files?${params.toString()}`,
     { signal }
   );
   if ('data' in response && response.data) {
     return response.data;
   }
   return response as S3FilesResponse;
+}
+
+export async function fetchAndroidS3FilesList(
+  page: number = 1,
+  limit: number = 1000,
+  search: string = '',
+  signal?: AbortSignal
+): Promise<AndroidS3FilesResponse> {
+  const params = new URLSearchParams();
+  params.append('page', page.toString());
+  params.append('limit', limit.toString());
+  if (search) params.append('search', search);
+
+  const response = await apiRequest<AndroidS3FilesResponse>(
+    `/android/s3-files?${params.toString()}`,
+    { signal }
+  );
+  return response;
+}
+
+export async function fetchAndroidS3FileUrl(
+  key: string,
+  download: boolean = false
+): Promise<{ url: string }> {
+  const params = new URLSearchParams();
+  params.append('key', key);
+  if (download) params.append('download', 'true');
+
+  const response = await apiRequest<{ success: boolean; data: { url: string } } | { url: string }>(
+    `/android/s3-files/file-url?${params.toString()}`
+  );
+  if ('data' in response && response.data) {
+    return response.data;
+  }
+  return response as { url: string };
 }
 
 function getS3FileContentUrl(key: string): string {
@@ -397,7 +580,7 @@ function unwrapS3FileContent<T>(response: { success?: boolean; data?: T; content
       return response.body;
     }
   }
-  
+
   // Fallback if the structure is different (though backend says it returns { success, data })
   return response as unknown as T;
 }
@@ -552,7 +735,7 @@ export interface DoctorReportSummary {
   reviewedAt?: string;
   patientName?: string;
   reportType?: string;
-  
+
 }
 
 function deriveFileName(key: string | undefined, fallback: string = "Report"): string {
@@ -674,7 +857,7 @@ export interface Doctor {
   specialization: string;
   hospital?: string;
   licenseNumber?: string;
-  status: 'ACTIVE' | 'INACTIVE'; 
+  status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
 }
@@ -754,7 +937,7 @@ export async function fetchDoctors(): Promise<Doctor[]> {
   }
 
   const data = await response.json();
-  
+
   if (!data.success) {
     throw new Error(data.message || "Failed to fetch doctors");
   }
@@ -788,15 +971,15 @@ export async function createDoctor(payload: CreateDoctorPayload): Promise<Doctor
     throw new Error(errorMessage);
   }
 
-  const responseData = await response.json() as {success: boolean, data: { doctor: Doctor } } | { success: boolean, doctor: Doctor };
-  
+  const responseData = await response.json() as { success: boolean, data: { doctor: Doctor } } | { success: boolean, doctor: Doctor };
+
   if ('data' in responseData && responseData.data && 'doctor' in responseData.data) {
     return responseData.data.doctor;
   }
   if ('doctor' in responseData) {
     return (responseData as any).doctor;
   }
-  
+
   return responseData as unknown as Doctor;
 }
 
@@ -859,6 +1042,7 @@ export async function setDoctorPassword(payload: SetDoctorPasswordPayload): Prom
 
 export interface SupportComplaint {
   id: string;
+  complaint_id: string;
   name: string;
   machine_id: string;
   complaint: string;
@@ -887,11 +1071,11 @@ export interface UpdateComplaintPayload {
 //   const baseUrl = import.meta.env.VITE_SUPPORT_API_BASE_URL || 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
 //   const path = import.meta.env.VITE_SUPPORT_COMPLAINTS_PATH || '/support/complaints';
 //   const response = await fetch(`${baseUrl}${path}`);
-  
+
 //   if (!response.ok) {
 //     throw new Error(`Failed to fetch complaints: ${response.statusText}`);
 //   }
-  
+
 //   return await response.json();
 // }
 export async function fetchSupportComplaints(): Promise<{ success: boolean; complaints: SupportComplaint[] }> {
@@ -935,7 +1119,7 @@ export async function updateSupportComplaint(id: string, payload: UpdateComplain
     try {
       const errJson = JSON.parse(errText);
       message = errJson.message || errJson.error?.message || errText;
-    } catch {}
+    } catch { }
 
     throw new Error(`Failed to update complaint: ${message}`);
   }
@@ -954,11 +1138,53 @@ export async function createSupportComplaint(payload: CreateComplaintPayload): P
       body: JSON.stringify(payload),
     }
   );
-  
+
   if (!response.ok) {
     throw new Error(`Failed to create complaint: ${response.statusText}`);
   }
-  
+
   return await response.json();
 }
 
+/* ======================= DEVICE ANALYTICS API ======================= */
+
+const DEVICE_ANALYTICS_BASE_URL = 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
+
+export async function fetchDeviceAnalyticsSummary(): Promise<AnalyticsSummaryResponse> {
+  const url = `${DEVICE_ANALYTICS_BASE_URL}/admin/analytics/summary`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getAdminAuthHeaders(true),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch device analytics summary: ${response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+export async function searchDeviceBySerial(
+  deviceId: string,
+  source: 'cardiox' | 'rhythm' = 'cardiox',
+  filter?: 'active',
+  list?: 'users'
+): Promise<DeviceLookupAPIResponse | RhythmUltraDeviceLookupAPIResponse | CardioXDeviceLookupAPIResponse | RhythmUsersLookupAPIResponse> {
+  const params = new URLSearchParams();
+  params.append('device_id', deviceId);
+  params.append('source', source);
+  if (filter) params.append('filter', filter);
+  if (list) params.append('list', list);
+
+  const url = `${DEVICE_ANALYTICS_BASE_URL}/admin/analytics/summary?${params.toString()}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: getAdminAuthHeaders(true),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to search device: ${response.statusText}`);
+  }
+
+  return await response.json();
+}

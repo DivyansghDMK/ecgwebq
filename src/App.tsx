@@ -37,6 +37,7 @@ import DoctorSetupPage from "@/components/doctor/DoctorSetupPage";
 import SupportComplaints from "@/components/admin/SupportComplaints";
 import VersionDownloadPage from "@/pages/VersionDownloadPage";
 import LicensesPage from "@/pages/Licenses";
+import DevicesPage from "@/components/admin/devices/DevicesPage";
 import CPAPLogin from "@/components/dashboard_CPAP_BiPAP/CPAPLogin";
 import CPAPDashboard from "@/components/dashboard_CPAP_BiPAP/CPAPDashboard";
 import AutoCPAPMode from "@/components/dashboard_CPAP_BiPAP/AutoCPAPMode";
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="users" element={<UsersPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="s3-browser" element={<S3FileBrowser />} />
+          <Route path="devices" element={<DevicesPage />} />
           <Route path="graphs" element={<ECGGraphsPage />} />
           <Route path="support" element={<SupportComplaints />} />
           <Route path="licenses" element={<LicensesPage />} />
