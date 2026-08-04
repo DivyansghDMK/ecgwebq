@@ -10,12 +10,13 @@ import {
   Eye,
   FileClock,
   FileText,
-  Heart,
   LayoutDashboard,
   LogOut,
   Mail,
+  Moon,
   RefreshCcw,
   Stethoscope,
+  Sun,
   UserCircle2,
 } from "lucide-react";
 import { fetchDoctorReports, fetchReviewedReports, type DoctorReportSummary } from "@/api/ecgApi";
@@ -256,22 +257,12 @@ const DoctorDashboardPresentation: React.FC = () => {
         animate={{ x: 0 }}
         className="doctor-sidebar fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-white/10 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 shadow-2xl lg:flex lg:flex-col"
       >
-        <div className="doctor-sidebar-header border-b border-white/10 p-6">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="rounded-xl bg-gradient-to-br from-brand-orange to-brand-electric p-2 shadow-glow transition-transform hover:scale-105"
-              aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-              title={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-            >
-              <Heart className="h-6 w-6 text-white" />
-            </button>
-            <div>
-              <h2 className="doctor-brand-title text-lg font-bold text-white">CARDIOX</h2>
-              <p className="doctor-brand-subtitle text-xs text-white/60">Healthcare Professional Workspace</p>
-            </div>
-          </div>
+        <div className="doctor-sidebar-header border-b border-white/10 p-6 flex justify-center">
+          <img
+            src="/cardiox-logo.png"
+            alt="CardioX Logo"
+            className="h-12 w-auto object-contain"
+          />
         </div>
 
         <nav className="space-y-1 p-4">
@@ -298,7 +289,17 @@ const DoctorDashboardPresentation: React.FC = () => {
           ))}
         </nav>
 
-        <div className="doctor-sidebar-footer mt-auto border-t border-white/10 p-4">
+        <div className="doctor-sidebar-footer mt-auto border-t border-white/10 p-4 space-y-2">
+          <motion.button
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={toggleTheme}
+            className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-300 transition-all hover:bg-white/10"
+            aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+          >
+            {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+            {theme === "light" ? "Dark mode" : "Light mode"}
+          </motion.button>
           <motion.button
             whileHover={{ x: 4 }}
             whileTap={{ scale: 0.98 }}
@@ -367,7 +368,7 @@ const DoctorDashboardPresentation: React.FC = () => {
               >
                 <div className="grid gap-6 p-6 lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
                   <div className="space-y-4">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-cyan-100">
+                    <div className="doctor-badge inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-cyan-100">
                       <Stethoscope className="h-3.5 w-3.5" />
                       Logged-in healthcare professional view
                     </div>

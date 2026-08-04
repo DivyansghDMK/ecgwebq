@@ -13,7 +13,6 @@ import type {
   S3File,
   RhythmUltraMaxReportsResponse,
   AndroidS3FilesResponse,
-  AndroidS3FilesPageResult,
 } from './types/ecg';
 import type {
   AnalyticsSummaryResponse,
@@ -382,20 +381,46 @@ function normalizeS3FilesResponse(
 ): S3FilesResponse {
   let files: S3File[] = [];
 
+  console.log('[normalizeS3FilesResponse] Input response:', response);
+  console.log('[normalizeS3FilesResponse] Has data property:', 'data' in response);
+  console.log('[normalizeS3FilesResponse] Has files property:', 'files' in response);
+  console.log('[normalizeS3FilesResponse] Has metadata property:', 'metadata' in response);
+
   if ('data' in response && response.data) {
+    console.log('[normalizeS3FilesResponse] response.data:', response.data);
+    console.log('[normalizeS3FilesResponse] Is data array:', Array.isArray(response.data));
     if (Array.isArray(response.data)) {
       files = response.data;
+      console.log('[normalizeS3FilesResponse] Using data as array, files length:', files.length);
     } else {
       files = response.data.files ?? [];
+      console.log('[normalizeS3FilesResponse] Using data.files, files length:', files.length);
+      console.log('[normalizeS3FilesResponse] data.files sample:', files.slice(0, 2).map((f: any) => ({
+        key: f?.key,
+        recordId: f?.recordId,
+        hasPatient: f && 'patient' in f,
+        patientName: f?.patient?.name
+      })));
     }
   } else if (response.files) {
     files = response.files;
+    console.log('[normalizeS3FilesResponse] Using response.files, files length:', files.length);
+    console.log('[normalizeS3FilesResponse] response.files sample:', files.slice(0, 2).map((f: any) => ({
+      key: f?.key,
+      recordId: f?.recordId,
+      hasPatient: f && 'patient' in f,
+      patientName: f?.patient?.name
+    })));
   }
 
   const nestedPagination =
     response.data && !Array.isArray(response.data) ? response.data.pagination : undefined;
   const meta = response.metadata;
   const existingPagination = nestedPagination ?? response.pagination;
+
+  console.log('[normalizeS3FilesResponse] nestedPagination:', nestedPagination);
+  console.log('[normalizeS3FilesResponse] meta:', meta);
+  console.log('[normalizeS3FilesResponse] existingPagination:', existingPagination);
 
   const resolvedPage = meta?.page ?? existingPagination?.page ?? page;
   const resolvedLimit = meta?.limit ?? existingPagination?.limit ?? limit;
@@ -405,7 +430,25 @@ function normalizeS3FilesResponse(
     existingPagination?.totalPages ??
     Math.max(1, Math.ceil(total / resolvedLimit));
 
-  return {
+  console.log('[normalizeS3FilesResponse] Resolved values:', {
+    resolvedPage,
+    resolvedLimit,
+    total,
+    totalPages,
+    filesLength: files.length
+  });
+
+  // Count files with patient data
+  const filesWithPatient = files.filter((f: any) => f && 'patient' in f);
+  const filesWithPatientName = files.filter((f: any) => f?.patient?.name);
+  console.log('[normalizeS3FilesResponse] Patient data analysis:', {
+    totalFiles: files.length,
+    filesWithPatientKey: filesWithPatient.length,
+    filesWithPatientName: filesWithPatientName.length,
+    patientPercentage: files.length > 0 ? (filesWithPatientName.length / files.length * 100).toFixed(1) + '%' : '0%'
+  });
+
+  const result = {
     files,
     pagination: {
       total,
@@ -416,6 +459,10 @@ function normalizeS3FilesResponse(
       hasPrev: meta?.hasPrev ?? existingPagination?.hasPrev ?? resolvedPage > 1,
     },
   };
+
+  console.log('[normalizeS3FilesResponse] Final result:', result);
+  console.log('[normalizeS3FilesResponse] ===== END NORMALIZATION =====');
+  return result;
 }
 
 export async function fetchS3Files(
@@ -437,18 +484,58 @@ export async function fetchS3Files(
     { signal }
   );
 
-  console.log('[fetchS3Files] raw response:', response);
+  console.log('[fetchS3Files] ===== RAW API RESPONSE =====');
+  console.log('[fetchS3Files] full response:', response);
+  console.log('[fetchS3Files] response keys:', Object.keys(response));
+  console.log('[fetchS3Files] has data:', 'data' in response);
+  console.log('[fetchS3Files] has metadata:', 'metadata' in response);
+  console.log('[fetchS3Files] has files:', 'files' in response);
+  
+  // Check if response has data property and what it contains
+  if ('data' in response && response.data) {
+    console.log('[fetchS3Files] response.data exists:', response.data);
+    console.log('[fetchS3Files] response.data is array:', Array.isArray(response.data));
+    if (!Array.isArray(response.data)) {
+      console.log('[fetchS3Files] response.data keys:', Object.keys(response.data));
+      console.log('[fetchS3Files] response.data.files:', response.data.files);
+      console.log('[fetchS3Files] response.data.pagination:', response.data.pagination);
+    }
+  }
+  
+  // Check for patient data in response
+  if ('data' in response && response.data && !Array.isArray(response.data) && response.data.files) {
+    const sampleFiles = response.data.files.slice(0, 3);
+    console.log('[fetchS3Files] sample files from response.data.files:', sampleFiles.map((f: any) => ({
+      key: f?.key,
+      recordId: f?.recordId,
+      hasPatient: f && 'patient' in f,
+      patientName: f?.patient?.name
+    })));
+  } else if ('files' in response && response.files) {
+    const sampleFiles = response.files.slice(0, 3);
+    console.log('[fetchS3Files] sample files from response.files:', sampleFiles.map((f: any) => ({
+      key: f?.key,
+      recordId: f?.recordId,
+      hasPatient: f && 'patient' in f,
+      patientName: f?.patient?.name
+    })));
+  }
 
   if ('data' in response || 'metadata' in response) {
-    return normalizeS3FilesResponse(response as S3FilesApiResponse, page, limit);
+    const normalized = normalizeS3FilesResponse(response as S3FilesApiResponse, page, limit);
+    console.log('[fetchS3Files] normalized response:', normalized);
+    return normalized;
   }
 
   const legacyResponse = response as S3FilesResponse;
   if (legacyResponse.pagination) {
+    console.log('[fetchS3Files] using legacy response with pagination');
     return legacyResponse;
   }
 
-  return normalizeS3FilesResponse(legacyResponse, page, limit);
+  const normalizedLegacy = normalizeS3FilesResponse(legacyResponse, page, limit);
+  console.log('[fetchS3Files] normalized legacy response:', normalizedLegacy);
+  return normalizedLegacy;
 }
 
 /* ======================= ANDROID REPORTS SEARCH (RHYTHM ULTRA MAX) ======================= */
@@ -788,7 +875,40 @@ export async function fetchDoctorReports(): Promise<DoctorReportSummary[]> {
 
   const data = await response.json();
   const reports = data.reports || data.data?.reports || [];
+
   return reports.map((report: any) => normalizeDoctorReportSummary(report, "pending"));
+}
+
+/**
+ * Fetch a fresh presigned URL for a reviewed report with retry logic
+ * This avoids SignatureDoesNotMatch errors from using stale presigned URLs
+ */
+export async function fetchReviewedReportUrl(s3Key: string, maxRetries: number = 3): Promise<{ url: string }> {
+  const params = new URLSearchParams();
+  params.append('key', s3Key);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await apiRequest<{ url: string }>(`/android/reports/pdf?${params.toString()}`);
+
+      if (response?.url) {
+        return response;
+      }
+
+      throw new Error('No URL returned from server');
+    } catch (err) {
+      console.warn(`Attempt ${attempt}/${maxRetries} failed to fetch reviewed report URL:`, err);
+
+      if (attempt === maxRetries) {
+        throw new Error(`Failed to fetch reviewed report URL after ${maxRetries} attempts`);
+      }
+
+      // Wait before retrying (exponential backoff: 500ms, 1000ms, 2000ms)
+      await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt - 1)));
+    }
+  }
+
+  throw new Error('Failed to fetch reviewed report URL');
 }
 
 export async function uploadReviewedReport(formData: FormData): Promise<void> {

@@ -23,7 +23,7 @@ export function CtaSection() {
         </h2>
         <p className="mt-4 text-base text-white/80">
           ECG module is production-ready, backend integration slots are open, and the
-          architecture blueprint already includes CPAP, BiPAP, and Oxygen telemetry.
+          architecture blueprint already includes Oxygen telemetry.
           Let’s build your connected cardiac command center.
         </p>
         <div className="mt-6 space-y-2 text-sm text-white/80">

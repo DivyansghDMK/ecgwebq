@@ -127,6 +127,12 @@ export interface S3File {
   report_type?: string;
   report_layout?: string;
   s3_key?: string;
+  // Patient data added by Lambda for JSON files
+  patient?: {
+    name?: string;
+    phone?: string;
+    id?: string;
+  };
 }
 
 export interface ECGReportMetadata {

@@ -31,7 +31,7 @@ export function LoginSection() {
       cardBg: "bg-gradient-to-br from-teal-50/50 to-cyan-50/30",
       borderColor: "border-teal-200/60",
       route: "/cpap/login",
-      isDisabled: false,
+      isDisabled: true,
     },
   ];
 

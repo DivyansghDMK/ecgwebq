@@ -4,9 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CardioX3DModel } from "@/components/CardioX3DModel";
 
-const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
+const loginImage = new URL("../Assets/login.png", import.meta.url).href;
 
 export function Hero() {
+  const handleDownloadBrochure = () => {
+    const link = document.createElement('a');
+    link.href = '/Brochure_RhythmUltra_ECG_PDF.pdf';
+    link.download = 'CardioX_Brochure.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
   return (
     <section
       id="hero"
@@ -47,6 +55,7 @@ export function Hero() {
           <Button
             variant="secondary"
             className="min-w-0 w-full max-w-[240px] tracking-[0.22em] sm:min-w-[200px]"
+            onClick={handleDownloadBrochure}
           >
             Download Brochure
           </Button>

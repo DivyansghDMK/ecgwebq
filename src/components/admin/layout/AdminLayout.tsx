@@ -49,7 +49,6 @@ export default function AdminLayout() {
     { path: "/artists/reports", label: "Reports", match: (path: string) => path.includes("reports") },
     { path: "/artists/s3-browser", label: "Reports Repository", match: (path: string) => path.includes("s3-browser") },
     { path: "/artists/devices", label: "Devices", match: (path: string) => path.includes("devices") },
-    { path: "/artists/graphs", label: "Analytics", match: (path: string) => path.includes("graphs") },
     { path: "/artists/support", label: "Support", match: (path: string) => path.includes("support") },
     { path: "/artists/licenses", label: "Licenses", match: (path: string) => path.includes("licenses") },
   ];

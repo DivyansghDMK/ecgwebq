@@ -106,3 +106,21 @@
 .doctor-workspace[data-theme="light"] .doctor-empty-icon {
   color: #cbd5e1;
 }
+
+/* Light mode: Badge styling */
+.doctor-workspace[data-theme="light"] .doctor-badge {
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+/* Light mode: Email row styling */
+.doctor-workspace[data-theme="light"] .doctor-profile-inner {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.doctor-workspace[data-theme="light"] .doctor-profile-inner .lucide-mail {
+  color: #0284c7;
+}

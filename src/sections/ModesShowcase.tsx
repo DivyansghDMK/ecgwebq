@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 const mode121Light = new URL("../Assets/121LightMode.png", import.meta.url).href;
-const mode121Dark = new URL("../Assets/121_dARKmODE.png", import.meta.url).href;
+const mode121Dark = new URL("../Assets/121DarkMode.png", import.meta.url).href;
 const mode121Graph = new URL("../Assets/121GraphMode.png", import.meta.url).href;
 const mode62Light = new URL("../Assets/62LightMode.png", import.meta.url).href;
 const mode62Dark = new URL("../Assets/62DarkMode.png", import.meta.url).href;

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, FileText, UploadCloud, Send, Pen, AlertCircle, RefreshCcw } from "lucide-react";
 import { createReviewedPdf } from "@/utils/pdfProcessor";
-import { uploadReviewedReport } from "@/api/ecgApi";
+import { uploadReviewedReport, fetchS3FileContent } from "@/api/ecgApi";
 import { SignatureCanvas } from "./SignatureCanvas";
 import { useNotification } from "@/contexts/NotificationContext";
 import { getStoredUser } from "@/lib/auth";
+import { ECGRecord } from "@/api/types/ecg";
 
 export interface DoctorReport {
   assignmentId: string;
@@ -42,6 +43,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = useState(true);
+  const [ecgData, setEcgData] = useState<ECGRecord | null>(null);
   const { showNotification } = useNotification();
 
   const resetState = () => {
@@ -55,6 +57,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     setError(null);
     setPdfLoadError(null);
     setIsLoadingPdf(true);
+    setEcgData(null);
   };
 
   // When the selected report changes, reset loading/error state.
@@ -66,6 +69,25 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       setPdfLoadError(null);
     }
   }, [report?.url]);
+
+  // Fetch ECG data when report changes
+  useEffect(() => {
+    const fetchEcgData = async () => {
+      if (!report?.key) return;
+
+      try {
+        // Derive JSON key from PDF key
+        const jsonKey = report.key.replace(/\.pdf$/i, ".json");
+        const data = await fetchS3FileContent<ECGRecord>(jsonKey);
+        setEcgData(data);
+      } catch (err) {
+        console.warn("Failed to fetch ECG data:", err);
+        setEcgData(null);
+      }
+    };
+
+    fetchEcgData();
+  }, [report?.key]);
 
   // Load saved healthcare professional ID and name from localStorage on mount
   useEffect(() => {
@@ -104,6 +126,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         doctorName: doctorName.trim(),
         signatureFile: signatureMode === "upload" ? signatureFile : null,
         signatureDataUrl: signatureMode === "draw" ? signatureDataUrl : null,
+        ecgData,
       });
 
       const reviewedFileName = report.fileName.replace(/\.pdf$/i, "") + "_reviewed.pdf";
@@ -259,11 +282,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                           setSignatureMode("draw");
                           setSignatureFile(null);
                         }}
-                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
-                          signatureMode === "draw"
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${signatureMode === "draw"
                             ? "bg-white text-orange-600 shadow-sm"
                             : "text-slate-600 hover:text-slate-900"
-                        }`}
+                          }`}
                       >
                         <Pen size={12} className="inline mr-1" />
                         Draw
@@ -274,11 +296,10 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                           setSignatureMode("upload");
                           setSignatureDataUrl(null);
                         }}
-                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
-                          signatureMode === "upload"
+                        className={`rounded px-2 py-1 text-xs font-medium transition-colors ${signatureMode === "upload"
                             ? "bg-white text-orange-600 shadow-sm"
                             : "text-slate-600 hover:text-slate-900"
-                        }`}
+                          }`}
                       >
                         <UploadCloud size={12} className="inline mr-1" />
                         Upload
@@ -288,8 +309,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   {signatureMode === "draw" ? (
                     <SignatureCanvas
                       onSignatureChange={setSignatureDataUrl}
-                      width={280}
-                      height={100}
+                      className="h-32 w-full"
                     />
                   ) : (
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-600 hover:border-orange-400 hover:bg-orange-50/40">

@@ -6,13 +6,14 @@ const waveformAnalysisImage = new URL("../Assets/Waveform_Analysis.png", import.
 const rulerImage = new URL("../Assets/ruler.png", import.meta.url).href;
 const caliperImage = new URL("../Assets/caliper.png", import.meta.url).href;
 const annotateImage = new URL("../Assets/annotate.png", import.meta.url).href;
+const magnifierImage = new URL("../Assets/Magnify.png", import.meta.url).href;
 
 const reviewTools = [
   {
     title: "Magnified Signal Review",
     description:
       "Zoom into waveform segments to inspect local signal morphology, isolate beat-level changes, and support manual validation during report review.",
-    image: waveformAnalysisImage,
+    image: magnifierImage,
     caption: "Magnifier mode"
   },
   {
@@ -104,10 +105,42 @@ export function WaveformAnalysisShowcase() {
               </div>
             ))}
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            viewport={{ once: true, amount: 0.25 }}
+            className="mt-6"
+          >
+            <Card className="border-white/10 bg-white/5">
+              <CardHeader>
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70">
+                  <div className="relative aspect-[16/9] w-full">
+                    <img
+                      src={caliperImage}
+                      alt="Caliper Precision Reading"
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-contain object-center p-2"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs uppercase tracking-[0.35em] text-white/40">
+                  Caliper tool
+                </p>
+                <CardTitle>Caliper Precision Reading</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Use digital calipers for quick manual reading of rhythm spacing and waveform width when a second look is needed before final interpretation.
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </motion.div>
         </motion.div>
 
         <div className="grid self-start gap-6">
-          {reviewTools.map((tool, index) => (
+          {reviewTools.filter((tool, index) => index !== 2).map((tool, index) => (
             <motion.div
               key={tool.title}
               initial={{ opacity: 0, x: 30 }}

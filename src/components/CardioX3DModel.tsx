@@ -55,13 +55,17 @@ function LoadingFallback() {
 }
 
 export function CardioX3DModel({ className }: { className?: string }) {
+  const controlsRef = useRef<any>(null);
+
   return (
-    <div className={`relative h-full w-full ${className || ''}`}>
-      <Canvas
-        className="h-full w-full"
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-        dpr={[1, 2]}
-      >
+    <div className={`relative h-full w-full overflow-visible ${className || ''}`}>
+      <div className="absolute inset-[-15%] overflow-visible z-20">
+        <Canvas
+          className="h-full w-full"
+          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
+          dpr={[1, 2]}
+          style={{ touchAction: 'none' }}
+        >
         <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
         {/* Enhanced lighting setup - even lighting to prevent black areas */}
         <ambientLight intensity={1.2} />
@@ -75,18 +79,36 @@ export function CardioX3DModel({ className }: { className?: string }) {
           <CardioXImage3D />
         </Suspense>
         <OrbitControls
+          ref={controlsRef}
           enableZoom={true}
           enablePan={false}
           enableRotate={true}
-          minDistance={4}
-          maxDistance={10}
+          minDistance={3.5}
+          maxDistance={8}
           autoRotate={false}
           autoRotateSpeed={0.5}
-          enableDamping={true}
+          enableDamping={false}
           dampingFactor={0.05}
+          zoomSpeed={1.0}
+          onChange={() => {
+            if (controlsRef.current) {
+              const distance = controlsRef.current.object.position.distanceTo(controlsRef.current.target);
+              console.log('[CardioX3D] Camera distance:', distance.toFixed(2));
+            }
+          }}
+          onStart={() => {
+            console.log('[CardioX3D] Controls started');
+          }}
+          onEnd={() => {
+            if (controlsRef.current) {
+              const distance = controlsRef.current.object.position.distanceTo(controlsRef.current.target);
+              console.log('[CardioX3D] Controls ended - final distance:', distance.toFixed(2));
+            }
+          }}
         />
       </Canvas>
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/40 px-4 py-2 text-xs text-white/70 backdrop-blur-sm">
+      </div>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 rounded-full bg-black/40 px-4 py-2 text-xs text-white/70 backdrop-blur-sm pointer-events-none">
         Drag to rotate • Scroll to zoom
       </div>
     </div>

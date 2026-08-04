@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 
 const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
+const idleImage = new URL("../Assets/TimeDomainAnalysis.png", import.meta.url).href;
 
 const controlFeatures = [
   {
@@ -58,7 +59,7 @@ export function ControlPanel() {
               <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-4">
                 <div className="relative aspect-[16/10] w-full">
                   <img
-                    src="/assets/control-panel-idle.jpg"
+                    src={idleImage}
                     alt="CardioX control panel idle mode"
                     loading="lazy"
                     className="absolute inset-0 h-full w-full rounded-2xl object-contain object-center p-2"

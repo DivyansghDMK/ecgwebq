@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
-const dashboardImage = new URL("../Assets/Dashboard.png", import.meta.url).href;
+const loginImage = new URL("../Assets/login.png", import.meta.url).href;
+const dashboardImage = new URL("../Assets/dashboard.png", import.meta.url).href;
 const controlPanelImage = new URL("../Assets/ControlPanel.png", import.meta.url).href;
 const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
 const hrvImage = new URL("../Assets/HRVLeadII.png", import.meta.url).href;

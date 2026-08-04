@@ -2,8 +2,8 @@
  import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Eye, RefreshCcw, LayoutDashboard, LogOut, Heart, CheckCircle, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchDoctorReports, fetchReviewedReports, DoctorReportSummary } from "@/api/ecgApi";
+import { FileText, Eye, RefreshCcw, LayoutDashboard, LogOut, Moon, Sun, CheckCircle, Clock, ChevronLeft, ChevronRight, MessageCircle } from "lucide-react";
+import { fetchDoctorReports, fetchReviewedReports, fetchReviewedReportUrl, DoctorReportSummary } from "@/api/ecgApi";
 import { ReviewModal, DoctorReport } from "./ReviewModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDoctorTheme } from "./useDoctorTheme";
@@ -23,6 +23,7 @@ export const DoctorReportsPage: React.FC = () => {
   const [selected, setSelected] = useState<DoctorReport | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'reviewed'>('pending');
+  const [sharingReportKey, setSharingReportKey] = useState<string | null>(null);
   
   // Pagination states
   const [pendingPage, setPendingPage] = useState(1);
@@ -65,41 +66,89 @@ export const DoctorReportsPage: React.FC = () => {
     setReviewOpen(true);
   };
 
-  const handleSubmitted = (reviewedReport: DoctorReport) => {
+  const handleSubmitted = async (reviewedReport: DoctorReport) => {
     // Remove from pending list
     setReports(prev => prev.filter(r => r.key !== reviewedReport.key));
-    
-    // Add to reviewed list with timestamp (convert to DoctorReportSummary)
-   const updatedUrl = reviewedReport.url?.replace("/pending/", "/reviewed/");
 
-  const reviewedSummary: DoctorReportSummary = {
-  id: reviewedReport.key,
-  assignmentId: reviewedReport.assignmentId,
-  doctorId: reviewedReport.doctorId,
-  deviceId: reviewedReport.deviceId,
-  status: "reviewed",
-  key: reviewedReport.key,
-  fileName: reviewedReport.fileName,
-  url: updatedUrl, 
+    // Derive the reviewed file key (replace .pdf with _reviewed.pdf and change folder)
+    const reviewedKey = reviewedReport.key.replace(/\.pdf$/i, "_reviewed.pdf").replace("/pending/", "/reviewed/");
+
+    // Fetch a fresh presigned URL for the reviewed file to avoid SignatureDoesNotMatch errors
+    let freshUrl = reviewedReport.url?.replace("/pending/", "/reviewed/");
+    try {
+      const urlResponse = await fetchReviewedReportUrl(reviewedKey);
+      freshUrl = urlResponse.url;
+    } catch (err) {
+      console.warn("Failed to fetch fresh presigned URL for reviewed report, using fallback:", err);
+      // Fallback to the derived URL if fresh fetch fails
+    }
+
+    const reviewedSummary: DoctorReportSummary = {
+      id: reviewedReport.key,
+      assignmentId: reviewedReport.assignmentId,
+      doctorId: reviewedReport.doctorId,
+      deviceId: reviewedReport.deviceId,
+      status: "reviewed",
+      key: reviewedKey,
+      fileName: reviewedReport.fileName.replace(/\.pdf$/i, "_reviewed.pdf"),
+      url: freshUrl,
       uploadedAt: new Date().toISOString(),
       lastModified: new Date().toISOString()
     };
-    
+
     setReviewedReports(prev => {
       const updated = [reviewedSummary, ...prev];
       return updated;
     });
-    
+
     // Reset to first page of reviewed reports
     setReviewedPage(1);
-    
+
     // Switch to reviewed tab to show the newly reviewed report
     setActiveTab('reviewed');
+
+    // Refresh the reviewed reports list from server to ensure consistency
+    setTimeout(() => {
+      loadReviewedReports();
+    }, 500);
+  };
+
+  const getPresignedUrl = async (report: DoctorReportSummary): Promise<string> => {
+    // If URL is already available and valid, use it directly
+    if (report.url) {
+      const updatedUrl = report.url.replace("/pending/", "/reviewed/");
+      return updatedUrl;
+    }
+    
+    // Otherwise fetch a fresh presigned URL
+    try {
+      const urlResponse = await fetchReviewedReportUrl(report.key);
+      return urlResponse.url;
+    } catch (error) {
+      console.error("Failed to fetch presigned URL:", error);
+      throw new Error("Failed to get report URL");
+    }
+  };
+
+  const shareViaWhatsApp = async (report: DoctorReportSummary) => {
+    setSharingReportKey(report.key);
+    try {
+      const fileUrl = await getPresignedUrl(report);
+      const message = `ECG Report: ${report.fileName}\n${fileUrl}`;
+      const waUrl = `https://web.whatsapp.com/send?phone=919311225195&text=${encodeURIComponent(message)}`;
+      window.open(waUrl, '_blank');
+    } catch (error) {
+      console.error("Failed to share via WhatsApp:", error);
+      alert("Failed to share report. Please try again.");
+    } finally {
+      setSharingReportKey(null);
+    }
   };
 
   const isReportsActive = location.pathname === '/doctor/reports';
 
   // Pagination helpers
+// ... (rest of the code remains the same)
   const getCurrentPendingReports = () => {
     const startIndex = (pendingPage - 1) * REPORTS_PER_PAGE;
     const endIndex = startIndex + REPORTS_PER_PAGE;
@@ -169,22 +218,12 @@ export const DoctorReportsPage: React.FC = () => {
         animate={{ x: 0 }}
         className="doctor-sidebar fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-r border-white/10 flex flex-col shadow-2xl"
       >
-        <div className="doctor-sidebar-header p-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-2 bg-gradient-to-br from-brand-orange to-brand-electric rounded-xl shadow-glow transition-transform hover:scale-105"
-              aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-              title={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
-            >
-              <Heart className="w-6 h-6 text-white" />
-            </button>
-            <div>
-              <h2 className="doctor-brand-title font-bold text-lg text-white">CARDIOX</h2>
-              <p className="doctor-brand-subtitle text-xs text-white/60">ECG Reports</p>
-            </div>
-          </div>
+        <div className="doctor-sidebar-header p-6 border-b border-white/10 flex justify-center">
+          <img
+            src="/cardiox-logo.png"
+            alt="CardioX Logo"
+            className="h-12 w-auto object-contain"
+          />
         </div>
         
         <nav className="p-4 space-y-1">
@@ -209,7 +248,17 @@ export const DoctorReportsPage: React.FC = () => {
           ))}
         </nav>
         
-        <div className="doctor-sidebar-footer p-4 border-t border-white/10 mt-auto">
+        <div className="doctor-sidebar-footer p-4 border-t border-white/10 mt-auto space-y-2">
+          <motion.button
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={toggleTheme}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 hover:bg-white/10 transition-all"
+            aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"}
+          >
+            {theme === "light" ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            {theme === "light" ? "Dark mode" : "Light mode"}
+          </motion.button>
           <motion.button
             whileHover={{ x: 4 }}
             whileTap={{ scale: 0.98 }}
@@ -452,6 +501,16 @@ export const DoctorReportsPage: React.FC = () => {
                                 >
                                   <Eye size={14} />
                                   Preview
+                                </motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.04 }}
+                                  whileTap={{ scale: 0.96 }}
+                                  onClick={() => shareViaWhatsApp(report)}
+                                  disabled={sharingReportKey === report.key}
+                                  title="Share via WhatsApp"
+                                  className="inline-flex items-center justify-center gap-1 rounded-lg bg-slate-800 p-1.5 text-slate-100 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <MessageCircle size={14} />
                                 </motion.button>
                                 <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-medium text-emerald-400">
                                   <CheckCircle size={14} />
