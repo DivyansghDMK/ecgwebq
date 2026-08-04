@@ -1,13 +1,12 @@
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-
-const loginImage = new URL("../Assets/login.png", import.meta.url).href;
-const dashboardImage = new URL("../Assets/dashboard.png", import.meta.url).href;
-const controlPanelImage = new URL("../Assets/ControlPanel.png", import.meta.url).href;
-const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
-const hrvImage = new URL("../Assets/HRVLeadII.png", import.meta.url).href;
-const hyperkalemiaImage = new URL("../Assets/Hyperkalmia_Photo.png", import.meta.url).href;
+import loginImage from "../Assets/Login.png";
+import dashboardImage from "../Assets/Dashboard.png";
+import controlPanelImage from "../Assets/ControlPanel.png";
+import reportImage from "../Assets/Report.png";
+import hrvImage from "../Assets/HRVLeadII.png";
+import hyperkalemiaImage from "../Assets/Hyperkalmia_Photo.png";
 
 const galleryItems = [
   {

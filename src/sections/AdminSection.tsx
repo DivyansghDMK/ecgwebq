@@ -9,12 +9,11 @@ import {
   CardFooter
 } from "@/components/ui/card";
 import { AutoCarousel } from "@/components/AutoCarousel";
-
-const dashboardImage = new URL("../Assets/dashboard.png", import.meta.url).href;
-const controlPanelImage = new URL("../Assets/ControlPanel.png", import.meta.url).href;
-const leadImage = new URL("../Assets/Lead_II.png", import.meta.url).href;
-const loginImage = new URL("../Assets/login.png", import.meta.url).href;
-const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
+import dashboardImage from "../Assets/Dashboard.png";
+import controlPanelImage from "../Assets/ControlPanel.png";
+import leadImage from "../Assets/Lead_II.png";
+import loginImage from "../Assets/Login.png";
+import reportImage from "../Assets/Report.png";
 
 const deviceStats = [
   { label: "Sampling Rate", value: "1000 sps / lead" },

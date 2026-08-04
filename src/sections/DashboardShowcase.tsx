@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
-const dashboardImage = new URL("../Assets/dashboard.png", import.meta.url).href;
+const dashboardImage = new URL("../Assets/Dashboard.png", import.meta.url).href;
 
 const metrics = [
   { label: "HR", value: "60 BPM" },

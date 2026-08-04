@@ -3,8 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CardioX3DModel } from "@/components/CardioX3DModel";
-
-const loginImage = new URL("../Assets/login.png", import.meta.url).href;
+import loginImage from "../Assets/Login.png";
 
 export function Hero() {
   const handleDownloadBrochure = () => {
