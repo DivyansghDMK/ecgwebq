@@ -1074,6 +1074,9 @@ export async function createDoctor(payload: CreateDoctorPayload): Promise<Doctor
     body: JSON.stringify({
       name: payload.name,
       email: payload.email,
+      specialization: payload.specialization,
+      license_number: payload.licenseNumber,
+      hospital_affiliation: payload.hospital,
     }),
   });
 
