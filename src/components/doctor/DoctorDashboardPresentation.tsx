@@ -389,7 +389,15 @@ const DoctorDashboardPresentation: React.FC = () => {
                       </div>
                       <div>
                         <h3 className="doctor-card-title text-lg font-semibold text-white">{user?.name || "Healthcare Professional"}</h3>
-                        <p className="doctor-muted text-sm text-slate-400">Healthcare professional session</p>
+                        <p className="doctor-muted text-sm text-slate-400">
+                          {user?.licenseNumber && user?.hospital
+                            ? `License: ${user.licenseNumber} · ${user.hospital}`
+                            : user?.licenseNumber
+                            ? `License: ${user.licenseNumber}`
+                            : user?.hospital
+                            ? user.hospital
+                            : "Healthcare professional session"}
+                        </p>
                       </div>
                     </div>
                     {user?.email && (

@@ -6,6 +6,8 @@ export interface StoredUser {
   name: string;
   email?: string;
   passwordResetRequired?: boolean;
+  licenseNumber?: string;
+  hospital?: string;
 }
 
 export function isJwtLikeToken(value: string): boolean {

@@ -152,6 +152,8 @@ interface User {
   role: string;
   name: string;
   email?: string;
+  licenseNumber?: string;
+  hospital?: string;
 }
 
 type AuthSuccessPayload = {
@@ -257,6 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: String(rawUser.role || role),
       name: String(rawUser.name || rawUser.doctor_name || username),
       email: typeof rawUser.email === "string" ? rawUser.email : undefined,
+      licenseNumber: typeof rawUser.licenseNumber === "string" ? rawUser.licenseNumber : typeof rawUser.license_number === "string" ? rawUser.license_number : undefined,
+      hospital: typeof rawUser.hospital === "string" ? rawUser.hospital : typeof rawUser.hospital_affiliation === "string" ? rawUser.hospital_affiliation : undefined,
       passwordResetRequired: Boolean(
         payload.passwordResetRequired ||
           rawUser.password_reset_required ||

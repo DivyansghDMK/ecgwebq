@@ -73,6 +73,8 @@ export async function doctorLogin(doctorName: string, password: string) {
           role: "doctor",
           name: data.doctor.doctor_name,
           email: data.doctor.email,
+          licenseNumber: data.doctor.license_number,
+          hospital: data.doctor.hospital_affiliation,
         },
       },
     };
