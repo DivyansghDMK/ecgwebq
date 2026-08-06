@@ -15,6 +15,10 @@ export interface ECGRecord {
     address?: string;
     medicalHistory?: string[];
     org?: string; // Organization
+    // Snake_case fallbacks for API compatibility
+    patient_name?: string;
+    patient_age?: number;
+    patient_gender?: 'M' | 'F' | 'O';
   };
   metrics: {
     heartRate: number;
@@ -35,6 +39,12 @@ export interface ECGRecord {
       minHR?: number;
       avgHR?: number;
     }; // Report overview with heart rate stats
+    // Healthcare Professional Review fields
+    natureOfEcg?: string;
+    natureStatus?: 'normal' | 'abnormal';
+    symptoms?: string | null;
+    classification?: string;
+    suggestedActions?: string | null;
   };
   timestamp: string;
   datetime?: {
@@ -42,6 +52,9 @@ export interface ECGRecord {
     time?: string;
   }; // Alternative timestamp field
   pdfBase64?: string;
+  // Snake_case fallbacks for API compatibility
+  report_id?: string;
+  id?: string;
 }
 
 export interface ECGUploadPayload {

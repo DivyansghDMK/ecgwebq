@@ -261,6 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: typeof rawUser.email === "string" ? rawUser.email : undefined,
       licenseNumber: typeof rawUser.licenseNumber === "string" ? rawUser.licenseNumber : typeof rawUser.license_number === "string" ? rawUser.license_number : undefined,
       hospital: typeof rawUser.hospital === "string" ? rawUser.hospital : typeof rawUser.hospital_affiliation === "string" ? rawUser.hospital_affiliation : undefined,
+      specialization: typeof rawUser.specialization === "string" ? rawUser.specialization : undefined,
       passwordResetRequired: Boolean(
         payload.passwordResetRequired ||
           rawUser.password_reset_required ||

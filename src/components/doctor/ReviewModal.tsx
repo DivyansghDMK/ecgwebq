@@ -36,6 +36,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const [comments, setComments] = useState("");
   const [doctorId, setDoctorId] = useState("");
   const [doctorName, setDoctorName] = useState("");
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [hospital, setHospital] = useState("");
+  const [specialization, setSpecialization] = useState("");
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [signatureMode, setSignatureMode] = useState<"upload" | "draw">("draw");
@@ -50,6 +53,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     setComments("");
     setDoctorId("");
     setDoctorName("");
+    setLicenseNumber("");
+    setHospital("");
+    setSpecialization("");
     setSignatureFile(null);
     setSignatureDataUrl(null);
     setSignatureMode("draw");
@@ -78,7 +84,9 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       try {
         // Derive JSON key from PDF key
         const jsonKey = report.key.replace(/\.pdf$/i, ".json");
+        console.log("Fetching ECG data from key:", jsonKey);
         const data = await fetchS3FileContent<ECGRecord>(jsonKey);
+        console.log("Raw ECG data received:", JSON.stringify(data, null, 2));
         setEcgData(data);
       } catch (err) {
         console.warn("Failed to fetch ECG data:", err);
@@ -97,6 +105,15 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     }
     if (doctorUser?.name) {
       setDoctorName(doctorUser.name);
+    }
+    if (doctorUser?.licenseNumber) {
+      setLicenseNumber(doctorUser.licenseNumber);
+    }
+    if (doctorUser?.hospital) {
+      setHospital(doctorUser.hospital);
+    }
+    if (doctorUser?.specialization) {
+      setSpecialization(doctorUser.specialization);
     }
   }, []);
 
@@ -124,9 +141,14 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         comments,
         doctorId: doctorId.trim(),
         doctorName: doctorName.trim(),
+        licenseNumber: licenseNumber || null,
+        specialization: specialization || null,
         signatureFile: signatureMode === "upload" ? signatureFile : null,
         signatureDataUrl: signatureMode === "draw" ? signatureDataUrl : null,
         ecgData,
+        hospitalName: hospital || null,
+        isReviewed: true,
+        originalFileName: report.fileName,
       });
 
       const reviewedFileName = report.fileName.replace(/\.pdf$/i, "") + "_reviewed.pdf";
