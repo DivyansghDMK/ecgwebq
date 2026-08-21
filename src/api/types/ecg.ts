@@ -119,6 +119,14 @@ export interface AndroidS3FilesResponse {
   data: {
     reports: S3File[];
     total_count: number;
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
   };
 }
 
