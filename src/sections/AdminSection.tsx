@@ -1,25 +1,16 @@
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
-} from "@/components/ui/card";
 import { AutoCarousel } from "@/components/AutoCarousel";
+import { Reveal, Section, SectionHead } from "./ui";
 
-const dashboardImage = new URL("../Assets/Dashboard.png", import.meta.url).href;
-const controlPanelImage = new URL("../Assets/ControlPanel.png", import.meta.url).href;
+const dashboardImage = new URL("../Assets/Dashboard.webp", import.meta.url).href;
+const controlPanelImage = new URL("../Assets/ControlPanel.webp", import.meta.url).href;
 const leadImage = new URL("../Assets/Lead_II.png", import.meta.url).href;
-const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
-const reportImage = new URL("../Assets/Report.png", import.meta.url).href;
+const loginImage = new URL("../Assets/Login.webp", import.meta.url).href;
+const reportImage = new URL("../Assets/121GraphMode.webp", import.meta.url).href;
 
 const deviceStats = [
-  { label: "Sampling Rate", value: "1000 sps / lead" },
-  { label: "ADC Resolution", value: "24 bit" },
-  { label: "Recording Window", value: "Up to 2 hrs" }
+  { label: "Sampling rate", value: "1000 sps", unit: "per lead" },
+  { label: "ADC resolution", value: "24 bit", unit: "" },
+  { label: "Recording window", value: "2 hrs", unit: "up to" }
 ];
 
 const deviceFeatures = [
@@ -87,94 +78,68 @@ const deviceFeatures = [
 
 export function AdminSection() {
   return (
-    <section id="device" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
-      <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-3xl space-y-4">
-          <Badge className="uppercase tracking-[0.4em]">Device Feature Map</Badge>
-          <h2 className="section-heading">
-            CardioX device engineering keeps every signal stable end to end
-          </h2>
-          <p className="section-subheading">
-            From analog front-end design to cloud protocols, CardioX hardware blends
-            hospital-grade accuracy with smart connectivity. Explore the device stack that
-            powers our 12-lead ECG experience.
-          </p>
-        </div>
-        <Badge variant="neutral" className="uppercase tracking-[0.4em]">
-          Built for clinical uptime
-        </Badge>
-      </div>
+    <Section id="device">
+      <SectionHead
+        eyebrow="Device specifications"
+        title="Hardware engineered to keep every signal stable, end to end"
+        lede="From analog front end to cloud protocol, the CardioX device pairs hospital-grade accuracy with smart connectivity. This is the stack behind the 12-lead ECG."
+      />
 
-      <motion.div
-        className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
-        initial={{ opacity: 0, y: 40 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true, amount: 0.3 }}
-      >
-        <p className="text-xs uppercase tracking-[0.4em] text-white/60">
-          Device Console • Live telemetry
-        </p>
-        <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
-          <AutoCarousel
-            className="aspect-[16/10] w-full"
-            images={[
-              { src: dashboardImage, alt: "Clinical dashboard overview" },
-              { src: controlPanelImage, alt: "Control panel live mode" },
-              { src: leadImage, alt: "Lead II detailed analysis" },
-              { src: loginImage, alt: "Secure login portal" },
-              { src: reportImage, alt: "12-lead ECG report view" }
-            ]}
-            interval={3000}
-          />
-        </div>
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:gap-8">
+        <Reveal>
+          <div className="overflow-hidden rounded-2xl bg-ink p-1.5 shadow-[0_18px_40px_-18px_rgba(18,16,15,0.55)] ring-1 ring-black/60">
+            <div className="overflow-hidden rounded-xl bg-black">
+              <AutoCarousel
+                className="aspect-[16/9] w-full rounded-none"
+                images={[
+                  { src: dashboardImage, alt: "Clinical dashboard overview" },
+                  { src: controlPanelImage, alt: "Control panel live mode" },
+                  { src: leadImage, alt: "Lead II detailed analysis" },
+                  { src: loginImage, alt: "Secure login portal" },
+                  { src: reportImage, alt: "12-lead ECG in graph mode" }
+                ]}
+                interval={3500}
+              />
+            </div>
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.1} className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 lg:grid-rows-3">
           {deviceStats.map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70"
-            >
-              <p className="text-xs uppercase tracking-[0.35em] text-white/40">{stat.label}</p>
-              <p className="mt-2 font-display text-xl text-white md:text-2xl">{stat.value}</p>
+            <div key={stat.label} className="flex flex-col justify-center rounded-2xl bg-ink px-6 py-5 text-white">
+              <p className="font-mono text-[0.68rem] uppercase tracking-[0.2em] text-white/50">{stat.label}</p>
+              <p className="mt-1 font-mono text-3xl font-medium tabular-nums text-[#FF8A3D] md:text-4xl">
+                {stat.value}
+              </p>
+              {stat.unit ? <p className="font-mono text-xs uppercase tracking-[0.16em] text-white/40">{stat.unit}</p> : null}
             </div>
           ))}
-        </div>
-      </motion.div>
+        </Reveal>
+      </div>
 
-      <div className="mt-10 grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-14 divide-y divide-ink/15 border-y border-ink/15">
         {deviceFeatures.map((feature, index) => (
-          <motion.div
-            key={feature.title}
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: (index % 3) * 0.1 }}
-            viewport={{ once: true, amount: 0.2 }}
-          >
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-white/70">
-                {feature.bullets.map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-                  >
-                    {item}
-                  </div>
+          <Reveal key={feature.title} delay={(index % 3) * 0.05}>
+            <div className="grid gap-4 py-7 md:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)] md:gap-10">
+              <div>
+                <h3 className="text-xl font-semibold text-ink">{feature.title}</h3>
+                <p className="mt-2 text-[0.95rem] leading-relaxed text-[#4A3F42]">{feature.description}</p>
+              </div>
+              <ul className="grid gap-x-8 gap-y-2 text-[0.95rem] text-ink/85 lg:grid-cols-1">
+                {feature.bullets.map((b) => (
+                  <li key={b} className="flex gap-3 leading-snug">
+                    <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-brand-orange" aria-hidden />
+                    {b}
+                  </li>
                 ))}
-              </CardContent>
-              {index === deviceFeatures.length - 1 ? (
-                <CardFooter className="text-xs uppercase tracking-[0.3em] text-white/50">
-                  Firmware-ready for future cardiopulmonary modules
-                </CardFooter>
-              ) : null}
-            </Card>
-          </motion.div>
+              </ul>
+            </div>
+          </Reveal>
         ))}
       </div>
-    </section>
+      <p className="mt-4 font-mono text-[0.68rem] uppercase tracking-[0.18em] text-[#6B5C60]">
+        Firmware-ready for future cardiopulmonary modules
+      </p>
+    </Section>
   );
 }
-

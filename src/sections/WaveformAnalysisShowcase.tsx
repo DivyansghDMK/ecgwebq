@@ -1,145 +1,68 @@
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Reveal, ScreenTabs, Section, SectionHead, type ScreenItem } from "./ui";
 
-const waveformAnalysisImage = new URL("../Assets/Waveform_Analysis.png", import.meta.url).href;
-const rulerImage = new URL("../Assets/ruler.png", import.meta.url).href;
-const caliperImage = new URL("../Assets/caliper.png", import.meta.url).href;
-const annotateImage = new URL("../Assets/annotate.png", import.meta.url).href;
+const waveformAnalysisImage = new URL("../Assets/Waveform_Analysis.webp", import.meta.url).href;
+const rulerImage = new URL("../Assets/ruler.webp", import.meta.url).href;
+const caliperImage = new URL("../Assets/caliper.webp", import.meta.url).href;
+const annotateImage = new URL("../Assets/annotate.webp", import.meta.url).href;
 
-const reviewTools = [
+const reviewTools: ScreenItem[] = [
   {
-    title: "Magnified Signal Review",
+    title: "Magnified signal review",
+    kicker: "Magnifier",
     description:
-      "Zoom into waveform segments to inspect local signal morphology, isolate beat-level changes, and support manual validation during report review.",
-    image: waveformAnalysisImage,
-    caption: "Magnifier mode"
+      "Zoom into waveform segments to inspect local morphology, isolate beat-level changes and validate manually during report review.",
+    image: waveformAnalysisImage
   },
   {
-    title: "Ruler-Based Measurement",
+    title: "Ruler-based measurement",
+    kicker: "Ruler",
     description:
-      "Measure intervals and amplitudes directly on fetched ECG data with visual rulers that help clinicians validate RR, PR, and QRS timing by hand.",
-    image: rulerImage,
-    caption: "Ruler tool"
+      "Measure intervals and amplitudes directly on fetched ECG data. Visual rulers help clinicians check RR, PR and QRS timing by hand.",
+    image: rulerImage
   },
   {
-    title: "Caliper Precision Reading",
+    title: "Caliper precision reading",
+    kicker: "Caliper",
     description:
-      "Use digital calipers for quick manual reading of rhythm spacing and waveform width when a second look is needed before final interpretation.",
-    image: caliperImage,
-    caption: "Caliper tool"
+      "Digital calipers give a quick manual reading of rhythm spacing and waveform width when a second look is needed before final interpretation.",
+    image: caliperImage
   },
   {
-    title: "Manual Annotation Workflow",
+    title: "Manual annotation",
+    kicker: "Annotate",
     description:
-      "Mark suspicious segments, add clinician notes, and save review decisions on top of API-fetched reports for richer downstream analysis.",
-    image: annotateImage,
-    caption: "Annotate mode"
+      "Mark suspicious segments, add clinician notes and save review decisions on top of API-fetched reports for downstream analysis.",
+    image: annotateImage
   }
 ];
 
-const workflowPoints = [
-  "Mobile app captures and uploads ECG reports into the review pipeline",
-  "Waveform data is fetched through API for secure desktop-side analysis",
-  "Clinicians can inspect, measure, annotate, and manually validate difficult rhythms",
-  "JSON and PDF outputs stay aligned with reviewed waveform decisions"
+const workflow = [
+  "The mobile app captures ECG reports and uploads them to the review pipeline",
+  "Waveform data is fetched through the API for secure desktop-side analysis",
+  "Clinicians inspect, measure, annotate and validate difficult rhythms",
+  "JSON and PDF outputs stay aligned with the reviewed waveform decisions"
 ];
 
 export function WaveformAnalysisShowcase() {
   return (
-    <section id="waveform-analysis" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
-      <div className="mb-12 max-w-3xl space-y-4">
-        <Badge className="uppercase tracking-[0.4em]">Waveform Analysis</Badge>
-        <h2 className="section-heading">
-          Review mobile-captured reports with magnification and manual measurement tools
-        </h2>
-        <p className="section-subheading">
-          CardioX brings API-fetched ECG reports from the mobile app into a dedicated
-          waveform review workspace. Teams can zoom into local signal segments, take
-          manual readings with ruler and caliper tools, and annotate suspicious regions
-          before exporting the final clinical report.
-        </p>
-      </div>
+    <Section id="waveform-analysis">
+      <SectionHead
+        eyebrow="Waveform review workspace"
+        title="Review mobile-captured reports with magnifier, ruler and caliper"
+        lede="Reports captured in the mobile app open in a dedicated review workspace. Zoom into a segment, take manual readings, annotate suspicious regions, then export the final clinical report."
+      />
+      <ScreenTabs items={reviewTools} />
 
-      <div className="grid items-start gap-6 md:grid-cols-1 lg:grid-cols-[1.35fr_1fr]">
-        <motion.div
-          className="self-start rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true, amount: 0.25 }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.4em] text-white/50">
-                API-Fetched Review Workspace
-              </p>
-              <h3 className="mt-2 font-display text-2xl text-white">
-                Interactive waveform inspection for clinician-led validation
-              </h3>
-            </div>
-            <Badge variant="neutral" className="tracking-[0.3em]">
-              Mobile App Report Review
-            </Badge>
-          </div>
-
-          <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/70">
-            <div className="relative aspect-[16/10] w-full">
-              <img
-                src={waveformAnalysisImage}
-                alt="Waveform analysis workspace with magnifier, ruler, caliper, and annotation tools"
-                loading="lazy"
-                className="absolute inset-0 h-full w-full object-contain object-center p-2"
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {workflowPoints.map((point) => (
-              <div
-                key={point}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/75"
-              >
-                {point}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <div className="grid self-start gap-6">
-          {reviewTools.map((tool, index) => (
-            <motion.div
-              key={tool.title}
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.08 }}
-              viewport={{ once: true, amount: 0.25 }}
-            >
-              <Card className="border-white/10 bg-white/5">
-                <CardHeader>
-                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70">
-                    <div className="relative aspect-[16/9] w-full">
-                      <img
-                        src={tool.image}
-                        alt={tool.title}
-                        loading="lazy"
-                        className="absolute inset-0 h-full w-full object-contain object-center p-2"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-white/40">
-                    {tool.caption}
-                  </p>
-                  <CardTitle>{tool.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>{tool.description}</CardDescription>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
+      <ol className="mt-14 grid gap-8 border-t border-ink/15 pt-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+        {workflow.map((step, i) => (
+          <Reveal key={step} delay={i * 0.06}>
+            <li className="list-none">
+              <span className="font-mono text-sm font-medium text-[#B93A00]">Step {i + 1}</span>
+              <p className="mt-2 text-[0.95rem] leading-snug text-[#4A3F42]">{step}</p>
+            </li>
+          </Reveal>
+        ))}
+      </ol>
+    </Section>
   );
 }

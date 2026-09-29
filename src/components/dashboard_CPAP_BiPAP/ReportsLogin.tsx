@@ -4,16 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { LayoutDashboard, Phone, Cpu, LogIn, Wind, Calendar, Settings } from "lucide-react";
 
 // Image imports with fallback
-const deckmountLogo = new URL("../../assets/DeckMount Photo.png", import.meta.url).href;
-const reportImage = new URL("../../assets/report.jpg", import.meta.url).href;
+const deckmountLogo = new URL("../../Assets/DeckMount Photo.png", import.meta.url).href;
+const reportImage = new URL("../../Assets/report.jpg", import.meta.url).href;
 
-// Try to load doctor illustration, fallback to report image if not found
-let doctorIllustration: string;
-try {
-  doctorIllustration = new URL("../../assets/doctor-illustration.png", import.meta.url).href;
-} catch {
-  doctorIllustration = reportImage;
-}
+// doctor-illustration.png was never committed, so the report image is used instead
+const doctorIllustration = reportImage;
 
 export default function ReportsLogin() {
   const navigate = useNavigate();

@@ -1,244 +1,97 @@
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Frame, Readout, Reveal, Section, SectionHead } from "./ui";
 
 const leadImage = new URL("../Assets/Lead_II.png", import.meta.url).href;
 
 const analysisMetrics = [
+  { label: "Heart rate", value: "60 bpm" },
+  { label: "PR interval", value: "160 ms" },
+  { label: "QRS duration", value: "85 ms" },
+  { label: "QT/QTc", value: "380/400 ms" }
+];
+
+const interpretation = [
+  "AI-driven anomaly detection and trend tagging",
+  "Layered annotations for multi-specialist collaboration",
+  "Export structured insights via JSON or HL7-compatible payloads"
+];
+
+const blocks = [
   {
-    label: "Heart Rate",
-    value: "60 bpm",
-    status: "Normal"
+    title: "Automated arrhythmia screening",
+    body: "Continuously analyzes live ECG to flag atrial fibrillation, ventricular tachycardia, premature ventricular contractions, sinus bradycardia and sinus tachycardia, and confirms normal sinus rhythm when appropriate."
   },
   {
-    label: "PR Interval",
-    value: "160 ms",
-    status: "Normal"
+    title: "Dynamic clinical conclusions",
+    body: "Builds a live Findings & Recommendations summary from current ECG metrics and stores each narrative with a time stamp, so clinicians get plain-language notes to review or share."
   },
   {
-    label: "QRS Duration",
-    value: "85 ms",
-    status: "Normal"
-  },
-  {
-    label: "QT/QTc",
-    value: "380 / 400 ms",
-    status: "Measured"
+    title: "Continual model training",
+    body: "Annotated ECG waveforms feed convolutional and transformer-based models. Each confirmed diagnosis becomes a labeled frame, and updated models are pushed to the device for on-site detection."
   }
 ];
 
 export function AnalysisSection() {
   return (
-    <section id="analysis" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
-      <div className="mb-12 max-w-3xl space-y-4">
-        <Badge className="uppercase tracking-[0.4em]">Live PQRS Analysis</Badge>
-        <h2 className="section-heading">
-          Advanced waveform intelligence for every lead
-        </h2>
-        <p className="section-subheading">
-          CardioX delivers high-fidelity waveform rendering with zoom controls,
-          amplitude scaling, and AI-generated interpretations. Clinicians can surface
-          trends, spot arrhythmias, and annotate rhythms in real time.
-        </p>
-      </div>
+    <Section id="analysis">
+      <SectionHead
+        eyebrow="Live PQRS analysis"
+        title="Waveform intelligence for every lead"
+        lede="High-fidelity rendering with zoom, amplitude scaling and AI-generated interpretations. Clinicians can spot trends and arrhythmias and annotate rhythms as they happen."
+      />
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
-        <div className="space-y-6">
-          <motion.div
-            className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            <p className="text-xs uppercase tracking-[0.4em] text-white/60">
-              Lead II • Detailed waveform analysis
-            </p>
-            <div className="mt-4 overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
-              <div className="relative aspect-[16/10] w-full md:aspect-[16/9]">
-                <img
-                  src={leadImage}
-                  alt="Lead II waveform analysis screen"
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full object-contain object-center p-2"
-                />
-              </div>
-            </div>
-            <div className="mt-6 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <Badge variant="neutral" className="tracking-[0.3em]">
-                  Rhythm Interpretation: Sinus Bradycardia
-                </Badge>
-                <p className="text-xs uppercase tracking-[0.35em] text-white/50">
-                  Amplification controls • Auto smoothing • Crash recovery
-                </p>
-              </div>
-              <p className="rounded-3xl border border-white/10 bg-gradient-to-r from-brand-orange/15 via-brand-electric/10 to-transparent px-6 py-5 text-base font-semibold text-white md:text-lg">
-                It can record patient signals continuously for 24 hours and generate focused
-                analytics covering the last <span className="font-bold text-brand-electric">2 hours</span>.
-              </p>
-            </div>
-          </motion.div>
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:gap-10">
+        <Reveal className="flex flex-col gap-5">
+          <Frame src={leadImage} alt="Lead II waveform analysis screen" />
+          <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#6B5C60]">
+            <span className="rounded-full bg-ink px-3 py-1.5 text-[#FF8A3D]">Rhythm: sinus bradycardia</span>
+            <span>Amplification · auto smoothing · crash recovery</span>
+          </div>
+          <p className="border-l-4 border-brand-orange bg-white/60 px-5 py-4 text-lg font-medium leading-snug text-ink">
+            Records patient signals continuously for 24 hours and produces focused analytics
+            for the last <span className="text-[#B93A00]">2 hours</span>.
+          </p>
+        </Reveal>
 
-          <motion.div
-            className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            <p className="text-xs uppercase tracking-[0.4em] text-white/60">
-              Waveform insights library
+        <Reveal delay={0.1} className="flex flex-col gap-6">
+          <div className="grid grid-cols-2 gap-3">
+            {analysisMetrics.map((m) => (
+              <Readout key={m.label} label={m.label} value={m.value} tone="paper" />
+            ))}
+          </div>
+          <div className="rounded-2xl bg-ink p-6 text-white">
+            <p className="font-head text-6xl font-semibold leading-none text-[#FF8A3D]">80+</p>
+            <p className="mt-3 text-sm leading-relaxed text-white/75">
+              diagnostic ECG patterns recognized, including ischemia, arrhythmias, conduction
+              blocks and HRV trends.
             </p>
-            <ul className="mt-4 space-y-3 text-sm text-white/80">
-              {[
-                "Atrial arrhythmias: atrial fibrillation, flutter, supraventricular tachycardia, junctional rhythms",
-                "Ventricular events: ventricular ectopics, ventricular tachycardia, premature ventricular complexes",
-                "Conduction changes: AV blocks (first, second, high-grade), bundle branch blocks, WPW patterns",
-                "Ischemia profiles: anterior, inferior, lateral, and septal myocardial infarction variations"
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 leading-relaxed"
-                >
-                  {item}
+          </div>
+          <div>
+            <h3 className="border-b-2 border-ink pb-3 text-xl font-semibold text-ink">
+              Automated interpretation, clinician in control
+            </h3>
+            <p className="mt-3 text-[0.95rem] leading-relaxed text-[#4A3F42]">
+              Local and cloud engines interpret rhythms while cardiologists keep manual
+              overrides and annotations.
+            </p>
+            <ul className="mt-2 divide-y divide-ink/15">
+              {interpretation.map((i) => (
+                <li key={i} className="py-2.5 text-[0.92rem] text-[#4A3F42]">
+                  {i}
                 </li>
               ))}
             </ul>
-            <p className="mt-5 text-xs uppercase tracking-[0.35em] text-white/50">
-              Reference templates keep clinicians aligned on morphology decisions
-            </p>
-          </motion.div>
-
-          <motion.div
-            className="rounded-3xl border-2 border-brand-electric/50 bg-gradient-to-br from-brand-electric/10 via-brand-orange/5 to-transparent p-6 shadow-glow"
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            <div className="mb-3 flex items-center gap-2">
-              <Badge className="bg-brand-electric/20 text-brand-electric uppercase tracking-[0.3em]">
-                Core Algorithms
-              </Badge>
-            </div>
-            <h4 className="font-display text-xl text-white">Advanced Signal Processing</h4>
-            <p className="mt-3 text-sm text-white/80">
-              Uses advanced signal processing to automatically detect heartbeats, filter noise,
-              and identify irregular rhythms. Adapts to different heart rates and provides stable,
-              accurate readings.
-            </p>
-            <div className="mt-5 space-y-3 text-xs text-white/70">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
-                <span className="font-semibold text-brand-electric">Pan-Tompkins QRS Detection:</span>{" "}
-                Industry-standard algorithm with bandpass filtering, differentiation, and adaptive peak detection
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
-                <span className="font-semibold text-brand-electric">Multi-Strategy Detection:</span>{" "}
-                Automatically selects optimal strategy (Conservative 40–120 BPM, Normal 100–180 BPM, Tight 160–300 BPM)
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
-                <span className="font-semibold text-brand-electric">Butterworth Filtering:</span>{" "}
-                4th-order bandpass filter (0.5–40 Hz) removes noise and baseline wander
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
-                <span className="font-semibold text-brand-electric">Statistical Arrhythmia Detection:</span>{" "}
-                Atrial fibrillation, ventricular tachycardia, PVCs, bradycardia/tachycardia, and normal sinus rhythm analysis
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
-                <span className="font-semibold text-brand-electric">PQRST Wave Detection:</span>{" "}
-                Identifies all ECG waveform components with QRS axis calculation using Lead I and aVF vectors
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="space-y-6">
-          <motion.div
-            className="grid gap-6"
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h3 className="font-display text-2xl text-white">
-                Automated interpretations with clinician oversight
-              </h3>
-              <p className="mt-3 text-sm text-white/70">
-                Combined local + cloud engines interpret thousands of rhythms, while
-                cardiologists retain full control with manual overrides and annotations.
-              </p>
-              <ul className="mt-5 space-y-3 text-sm text-white/70">
-                <li>• AI-driven anomaly detection and trend tagging</li>
-                <li>• Layered annotations for multi-specialist collaboration</li>
-                <li>• Export structured insights via JSON or HL7-compatible payloads</li>
-              </ul>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h4 className="font-display text-xl text-white">
-                Automated Arrhythmia Screening
-              </h4>
-              <p className="mt-3 text-sm text-white/70">
-                Continuously analyzes live ECG to flag atrial fibrillation, ventricular
-                tachycardia, premature ventricular contractions, sinus bradycardia, and
-                sinus tachycardia—confirming normal sinus rhythm when appropriate.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h4 className="font-display text-xl text-white">Dynamic Clinical Conclusions</h4>
-              <p className="mt-3 text-sm text-white/70">
-                Builds a live Findings & Recommendations summary from current ECG metrics,
-                storing narratives with time stamps so clinicians have instant,
-                plain-language insights to review or share.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h4 className="font-display text-xl text-white">AI Image Model Training</h4>
-              <p className="mt-3 text-sm text-white/70">
-                CardioX incorporates a continual learning pipeline where annotated ECG waveforms
-                feed convolutional and transformer-based models. Each confirmed diagnosis becomes
-                a labeled frame, enriching the dataset for future inference cycles.
-              </p>
-              <ul className="mt-4 space-y-3 text-sm text-white/70">
-                <li>• Curates ECG images with clinician-approved labels before training.</li>
-                <li>• Uses data augmentation to preserve morphology while expanding diversity.</li>
-                <li>• Pushes updated models to the device for on-site arrhythmia detection.</li>
-              </ul>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <h4 className="font-display text-xl text-white">CardioX Diagnostic Coverage</h4>
-              <p className="mt-3 text-sm text-white/70">
-                Our CardioX engine recognizes over 80 diagnostic ECG patterns—including
-                ischemia, arrhythmias, conduction blocks, and nuanced HRV trends.
-              </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {analysisMetrics.map((metric) => (
-                <Card key={metric.label} className="border-white/10 bg-white/5">
-                  <CardHeader>
-                    <CardTitle>{metric.label}</CardTitle>
-                    <Badge variant="neutral" className="tracking-[0.3em]">
-                      {metric.status}
-                    </Badge>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-lg text-white">
-                      {metric.value}
-                    </CardDescription>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+          </div>
+        </Reveal>
       </div>
-    </section>
+
+      <div className="mt-14 grid gap-10 md:grid-cols-3 md:gap-8">
+        {blocks.map((b, i) => (
+          <Reveal key={b.title} delay={i * 0.06}>
+            <h3 className="border-b-2 border-ink pb-3 text-xl font-semibold text-ink">{b.title}</h3>
+            <p className="mt-3 text-[0.95rem] leading-relaxed text-[#4A3F42]">{b.body}</p>
+          </Reveal>
+        ))}
+      </div>
+    </Section>
   );
 }
-

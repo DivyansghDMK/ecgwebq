@@ -7,7 +7,10 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["'Inter'", "system-ui", "sans-serif"],
-        display: ["'Sora'", "system-ui", "sans-serif"]
+        display: ["'Sora'", "system-ui", "sans-serif"],
+        head: ["'Bricolage Grotesque'", "system-ui", "sans-serif"],
+        body: ["'Instrument Sans'", "'Inter'", "system-ui", "sans-serif"],
+        mono: ["'IBM Plex Mono'", "ui-monospace", "monospace"]
       },
       colors: {
         brand: {
@@ -15,6 +18,8 @@ const config: Config = {
           electric: "#ff8a3d",
           focus: "#ffba66"
         },
+        ink: "#12100F",
+        paper: "#FDF4F1",
         slate: {
           950: "#090b16"
         }

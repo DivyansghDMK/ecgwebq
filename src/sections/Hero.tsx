@@ -1,143 +1,93 @@
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { CardioX3DModel } from "@/components/CardioX3DModel";
+import { EcgTrace, Readout, btnPrimary } from "./ui";
 
-const loginImage = new URL("../Assets/Login.png", import.meta.url).href;
+const readings = [
+  { label: "HR", value: "60 bpm" },
+  { label: "PR", value: "160 ms" },
+  { label: "QRS", value: "85 ms" },
+  { label: "QT/QTc", value: "380/400" }
+];
 
 export function Hero() {
   return (
-    <section
-      id="hero"
-      className="relative flex min-h-screen items-center justify-center overflow-x-hidden pt-24"
-    >
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-background opacity-60" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,138,61,0.15),rgba(9,11,22,0.95))]" />
-        <div className="absolute inset-0 bg-grid-dark bg-[size:40px_40px] opacity-40" />
-      </div>
+    <section id="hero" className="relative overflow-hidden bg-ink pt-16 text-white">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_75%_40%,rgba(255,107,26,0.16),transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-dark bg-[size:32px_32px] opacity-60" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.9 }}
-        className="relative mx-auto flex w-full max-w-7xl flex-col items-center gap-8 px-4 text-center sm:px-6 lg:gap-10 lg:px-8"
-      >
-        <Badge className="max-w-full text-center uppercase tracking-[0.24em] sm:tracking-[0.4em]">
-          Built to Detect. Designed to Last.
-        </Badge>
-        <div className="w-full max-w-5xl space-y-5 text-center">
-          <h1
-            className="font-display leading-tight"
-            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
-          >
-            CardioX by Deckmount
-          </h1>
-          <p className="mx-auto max-w-2xl text-base text-white/70 md:text-lg xl:text-xl">
-            Experience a new era of ECG intelligence with live waveform analysis,
-            predictive alerts, and an intuitive control center engineered for
-            cardiologists and clinical teams.
-          </p>
-        </div>
-        <div className="flex w-full flex-wrap items-center justify-center gap-4 text-center">
-          <Button className="min-w-0 w-full max-w-[240px] uppercase tracking-[0.22em] sm:min-w-[200px]">
-            Launch Live Demo
-          </Button>
-          <Button
-            variant="secondary"
-            className="min-w-0 w-full max-w-[240px] tracking-[0.22em] sm:min-w-[200px]"
-          >
-            Download Brochure
-          </Button>
-        </div>
-
+      <div className="relative mx-auto grid w-full max-w-[84rem] items-center gap-12 px-5 py-14 sm:px-8 md:py-24 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
         <motion.div
-          className="relative mt-4 w-full max-w-7xl lg:mt-8"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1, delay: 0.5 }}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
         >
-          <div className="relative overflow-hidden rounded-3xl border border-white/20 bg-gradient-to-br from-black/60 via-slate-900/60 to-black/60 p-3 shadow-2xl backdrop-blur-xl sm:p-5 lg:p-8">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,138,61,0.1),transparent)]" />
-            <div className="relative h-[clamp(260px,42vh,560px)] w-full">
-              <CardioX3DModel className="rounded-2xl" />
-            </div>
+          <p className="font-mono text-[0.72rem] font-medium uppercase tracking-[0.24em] text-[#FF8A3D]">
+            CardioX · Deckmount ECG Monitor
+          </p>
+          <h1
+            className="mt-5 font-head font-semibold leading-[1.02] tracking-tight"
+            style={{ fontSize: "clamp(2.5rem, 6vw, 4.75rem)" }}
+          >
+            Built to detect.
+            <br />
+            <span className="text-[#FF8A3D]">Designed to last.</span>
+          </h1>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-white/70 md:text-lg">
+            12-lead ECG acquisition, waveform analysis and report management for
+            cardiologists, technicians and clinics. Works offline, syncs to the cloud when
+            it can.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center gap-4">
+            <a href="#login-section" className={btnPrimary}>
+              Open the portal
+            </a>
+            <a
+              href="#gallery"
+              className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:border-white hover:bg-white/10"
+            >
+              See the screens <span aria-hidden>→</span>
+            </a>
           </div>
+          <p className="mt-10 font-mono text-xs uppercase tracking-[0.2em] text-white/45">
+            12 leads · 1000 sps per lead · 24-bit ADC
+          </p>
         </motion.div>
 
-        <div className="relative mt-10 w-full max-w-7xl rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-2xl sm:p-6 lg:mt-14">
-          <div className="grid gap-6 md:grid-cols-[1.2fr_1fr] md:gap-8">
-            <motion.div
-              className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 p-6"
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              viewport={{ once: true, amount: 0.4 }}
-            >
-              <p className="text-sm uppercase tracking-[0.4em] text-white/60">
-                CARDIOX LIVE LOGIN
-              </p>
-              <h2 className="mt-4 font-display text-2xl text-white">
-                Secure Clinical Portal
-              </h2>
-              <p className="mt-3 text-sm text-white/70">
-                Authenticate via hospital ID, phone number, or biometric passkeys.
-                Designed for rapid access without compromising security.
-              </p>
-              <div className="mt-6 w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black via-slate-900 to-slate-950 shadow-inner">
-                <div className="relative aspect-[16/10] w-full">
-                  <img
-                    src={loginImage}
-                    alt="CardioX Login Screen"
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-contain object-center p-2 opacity-90"
-                  />
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className={cn(
-                "glass-panel flex flex-col flex-wrap gap-4 self-center border border-brand-orange/40 p-6 text-center sm:text-left",
-                "shadow-[0_0_60px_rgba(255,138,61,0.2)]"
-              )}
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8, delay: 0.35 }}
-              viewport={{ once: true, amount: 0.4 }}
-            >
-              <p className="text-xs uppercase tracking-[0.4em] text-brand-electric">
-                Live Metric Snapshot
-              </p>
-              <div className="grid grid-cols-1 gap-3 text-center text-white sm:grid-cols-3">
-                {[
-                  ["HR", "60 BPM"],
-                  ["PR", "160 ms"],
-                  ["QTc", "400 ms"]
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-3 py-4"
-                  >
-                    <p className="text-[0.65rem] uppercase tracking-[0.3em] text-white/50">
-                      {label}
-                    </p>
-                    <p className="mt-2 font-display text-lg text-white">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm text-white/70">
-                Real-time waveform monitoring with AI-assisted arrhythmia detection.
-              </p>
-              <Button variant="ghost" className="flex-wrap justify-center gap-2 px-4 text-center text-sm sm:justify-between">
-                Watch an ECG session replay <span aria-hidden>→</span>
-              </Button>
-            </motion.div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.15, ease: "easeOut" }}
+          className="rounded-2xl bg-[#0B0A09] p-4 ring-1 ring-white/10 shadow-[0_30px_80px_-30px_rgba(255,107,26,0.35)] sm:p-5"
+        >
+          <div className="flex items-center justify-between font-mono text-[0.68rem] uppercase tracking-[0.2em] text-white/50">
+            <span className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+              Lead II
+            </span>
+            <span>25 mm/s · 10 mm/mV</span>
           </div>
-        </div>
-      </motion.div>
+
+          <div
+            className="relative mt-4 h-44 overflow-hidden rounded-xl bg-black sm:h-52"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,107,26,0.10) 1px, transparent 1px), linear-gradient(90deg, rgba(255,107,26,0.10) 1px, transparent 1px)",
+              backgroundSize: "24px 24px"
+            }}
+          >
+            <EcgTrace className="absolute inset-0" />
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {readings.map((r) => (
+              <Readout key={r.label} label={r.label} value={r.value} />
+            ))}
+          </div>
+          <p className="mt-3 text-right font-mono text-[0.65rem] uppercase tracking-[0.18em] text-white/35">
+            Sample waveform
+          </p>
+        </motion.div>
+      </div>
+      <div className="h-2 w-full opacity-40 [background-image:linear-gradient(90deg,#fff_1px,transparent_1px)] [background-size:16px_8px]" aria-hidden />
     </section>
   );
 }
-

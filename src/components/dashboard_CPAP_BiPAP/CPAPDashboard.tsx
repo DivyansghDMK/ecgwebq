@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Wind, Activity, Settings, Calendar, LogOut, Bell, Search, User, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { fetchReports } from "../../services/reportsApi";
-const deckmountLogo = new URL('../../assets/DeckMount Photo.png', import.meta.url).href;
+const deckmountLogo = new URL('../../Assets/DeckMount Photo.png', import.meta.url).href;
 
 export default function CPAPDashboard() {
   const [isDarkMode, setIsDarkMode] = useState(() => typeof window !== 'undefined' && localStorage.getItem('theme') === 'dark');

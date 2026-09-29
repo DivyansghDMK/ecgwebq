@@ -1,23 +1,19 @@
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Reveal, Section, SectionHead, btnPrimary } from "./ui";
 
 const supportServices = [
   {
-    title: "Deployment & Environment Setup",
+    title: "Deployment & environment setup",
     description:
-      "Remote configuration assistance across Windows and macOS, driver installation, and automated build pipelines.",
+      "Remote configuration across Windows and macOS, driver installation and automated build pipelines.",
     points: [
       "PyInstaller packaging with signed installers",
-      "Multi-device architecture planning (ECG + CPAP + BiPAP + Oxygen)",
-      "Cloud provisioning for AWS S3, Azure, GCS, API, FTP, or Dropbox"
+      "Multi-device architecture planning (ECG + CPAP + BiPAP + Oxygen)"
     ]
   },
   {
-    title: "Clinical Onboarding & Training",
+    title: "Clinical onboarding & training",
     description:
-      "Hands-on training for cardiologists, technicians, and support staff to master CardioX workflows quickly.",
+      "Hands-on training so cardiologists, technicians and support staff learn CardioX workflows quickly.",
     points: [
       "Role-focused workshops and certification paths",
       "Custom reporting templates with branding and clinical formatting",
@@ -25,9 +21,9 @@ const supportServices = [
     ]
   },
   {
-    title: "Documentation & Architecture",
+    title: "Documentation & architecture",
     description:
-      "Keep your team aligned with comprehensive guides and future-proof architectural blueprints.",
+      "Guides and architectural blueprints that keep your team aligned as you grow.",
     points: [
       "Admin guide and troubleshooting playbooks",
       "Backend/API integration roadmap (FastAPI or Node.js)",
@@ -38,50 +34,32 @@ const supportServices = [
 
 export function SupportSection() {
   return (
-    <section id="support" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
-      <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="max-w-3xl space-y-4">
-          <Badge className="uppercase tracking-[0.4em]">Assistance & Support</Badge>
-          <h2 className="section-heading">
-            Partner with Deckmount specialists every step of the way
-          </h2>
-          <p className="section-subheading">
-            From deployment to staff training, our team ensures CardioX integrates
-            seamlessly into your clinical workflow while meeting compliance and scaling
-            needs.
-          </p>
-        </div>
-        <Button asChild className="uppercase tracking-[0.3em]">
-          <a href="mailto:ankur.kumar@deckmount.in">Talk to Solutions Team</a>
-        </Button>
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {supportServices.map((service, index) => (
-          <motion.div
-            key={service.title}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
-            viewport={{ once: true, amount: 0.3 }}
-          >
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>{service.title}</CardTitle>
-                <CardDescription>{service.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-white/70">
-                {service.points.map((point) => (
-                  <div key={point} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                    {point}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </motion.div>
+    <Section id="support">
+      <SectionHead
+        eyebrow="Assistance & support"
+        title="Deckmount specialists with you from install to training"
+        lede="Our team fits CardioX into your clinical workflow, and helps you meet compliance and scaling needs along the way."
+        action={
+          <a href="mailto:ankur.kumar@deckmount.in" className={btnPrimary}>
+            Talk to the solutions team
+          </a>
+        }
+      />
+      <div className="grid gap-10 md:grid-cols-3 md:gap-8">
+        {supportServices.map((service, i) => (
+          <Reveal key={service.title} delay={i * 0.06}>
+            <h3 className="border-b-2 border-ink pb-3 text-xl font-semibold text-ink">{service.title}</h3>
+            <p className="mt-3 text-[0.95rem] leading-relaxed text-[#4A3F42]">{service.description}</p>
+            <ul className="mt-3 divide-y divide-ink/15 border-t border-ink/15">
+              {service.points.map((p) => (
+                <li key={p} className="py-3 text-[0.92rem] leading-snug text-ink/85">
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
         ))}
       </div>
-    </section>
+    </Section>
   );
 }
-

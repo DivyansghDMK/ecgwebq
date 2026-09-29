@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/sections/Hero";
 import { Features } from "@/sections/Features";
+import { RhythmUltraMax } from "@/sections/RhythmUltraMax";
 import { DashboardShowcase } from "@/sections/DashboardShowcase";
 import { ProductOverview } from "@/sections/ProductOverview";
 import { ExperienceGallery } from "@/sections/ExperienceGallery";
@@ -77,22 +78,23 @@ export default function App() {
           element={
             <>
               <Navbar />
-              <main className="flex flex-col gap-6 w-full">
+              <main className="landing flex w-full flex-col">
                 <ScrollToHash />
                 <Hero />
-                <ExperienceGallery />
                 <ProductOverview />
                 <Features />
+                <RhythmUltraMax />
+                <ExperienceGallery />
                 <DashboardShowcase />
                 <ControlPanel />
-              <ModesShowcase />
-              <AnalysisSection />
-              <WaveformAnalysisShowcase />
-              <ReportHistorySection />
-              <AdminSection />
-              <SupportSection />
-              <CtaSection />
-              <LoginSection />
+                <ReportHistorySection />
+                <ModesShowcase />
+                <AnalysisSection />
+                <WaveformAnalysisShowcase />
+                <AdminSection />
+                <SupportSection />
+                <CtaSection />
+                <LoginSection />
             </main>
             <Footer />
             <CardmiaChatbot />

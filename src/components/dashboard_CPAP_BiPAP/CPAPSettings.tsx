@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Settings, SlidersHorizontal, Palette, Eye, EyeOff, Bell, LayoutDashboard, Wind, Activity, Calendar, LogOut, ChevronUp, ChevronDown, User, ShieldCheck, Info, Wifi, Bluetooth, Gauge, Copy } from 'lucide-react';
-const deckmountLogo = new URL('../../assets/DeckMount Photo.png', import.meta.url).href;
+const deckmountLogo = new URL('../../Assets/DeckMount Photo.png', import.meta.url).href;
 
 function getLS(key: string, fallback: string) {
   try {

@@ -1,123 +1,56 @@
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 import { Activity, ArrowRight, Wind } from "lucide-react";
+import { Reveal, Section, SectionHead } from "./ui";
+
+const loginOptions = [
+  {
+    id: "ecg",
+    title: "ECG",
+    description: "Monitoring and analysis dashboard for cardiologists and clinical teams.",
+    icon: Activity,
+    route: "/login",
+    accent: "border-t-brand-orange",
+    iconClass: "bg-brand-orange/15 text-[#B93A00]"
+  },
+  {
+    id: "cpap-bipap",
+    title: "CPAP / BiPAP",
+    description: "Therapy dashboards, reports, modes and machine settings.",
+    icon: Wind,
+    route: "/cpap/login",
+    accent: "border-t-teal-600",
+    iconClass: "bg-teal-600/15 text-teal-800"
+  }
+];
 
 export function LoginSection() {
-  const navigate = useNavigate();
-
-  const loginOptions = [
-    {
-      id: "ecg",
-      title: "Login for ECG",
-      description: "Access ECG monitoring and analysis dashboard for cardiologists and clinical teams",
-      icon: Activity,
-      gradient: "from-brand-orange via-brand-electric to-brand-focus",
-      iconBg: "bg-orange-100",
-      iconColor: "text-orange-600",
-      cardBg: "bg-gradient-to-br from-orange-50/40 to-amber-50/30",
-      borderColor: "border-orange-200/50",
-      route: "/login",
-      isDisabled: false,
-    },
-    {
-      id: "cpap-bipap",
-      title: "Login for CPAP/BiPAP",
-      description: "Access CPAP and BiPAP therapy dashboards, reports, modes, and machine settings",
-      icon: Wind,
-      gradient: "from-teal-500 via-cyan-500 to-blue-500",
-      iconBg: "bg-teal-100",
-      iconColor: "text-teal-600",
-      cardBg: "bg-gradient-to-br from-teal-50/50 to-cyan-50/30",
-      borderColor: "border-teal-200/60",
-      route: "/cpap/login",
-      isDisabled: false,
-    },
-  ];
-
   return (
-    <section id="login-section" className="mx-auto w/full max-w-[100rem] px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 0.6 }}
-        className="text-center mb-12"
-      >
-        <Badge className="uppercase tracking-[0.4em] mb-4">Secure Access</Badge>
-        <h2 className="section-heading mb-4">
-          Choose Your Platform
-        </h2>
-        <p className="section-subheading max-w-2xl mx-auto">
-          Select your service to access your personalized dashboard and monitoring tools
-        </p>
-      </motion.div>
-
-      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-2">
-        {loginOptions.map((option, index) => {
-          const Icon = option.icon;
-          return (
-            <motion.div
-              key={option.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, amount: 0.3 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              whileHover={option.isDisabled ? undefined : { y: -6, scale: 1.01 }}
-              onClick={() => {
-                if (!option.isDisabled && option.route) {
-                  navigate(option.route);
-                }
-              }}
-              className={`${option.cardBg} rounded-2xl border ${option.borderColor} shadow-lg p-8 group relative overflow-hidden backdrop-blur-sm transition-all duration-300 ${option.isDisabled ? "cursor-not-allowed opacity-80" : "cursor-pointer hover:shadow-xl"}`}
+    <Section id="login-section">
+      <SectionHead
+        eyebrow="Secure access"
+        title="Choose your platform"
+        lede="Sign in to the dashboard for the device you work with."
+      />
+      <div className="grid gap-6 md:grid-cols-2">
+        {loginOptions.map((option, i) => (
+          <Reveal key={option.id} delay={i * 0.08}>
+            <Link
+              to={option.route}
+              className={`group flex h-full flex-col rounded-2xl border border-ink/15 border-t-4 bg-white/75 p-7 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_40px_-20px_rgba(18,16,15,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink ${option.accent}`}
             >
-              <div className="relative z-10">
-                {/* Icon */}
-                <div className="flex justify-center mb-6">
-                  <motion.div
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className={`p-4 rounded-xl ${option.iconBg} shadow-md`}
-                  >
-                    <Icon className={`w-8 h-8 ${option.iconColor}`} />
-                  </motion.div>
-                </div>
-
-                {/* Title */}
-                <h3 className="text-2xl font-bold text-center text-gray-900 mb-3">
-                  {option.title}
-                </h3>
-
-                {/* Description */}
-                <p className="text-center text-gray-600 mb-8 text-sm leading-relaxed">
-                  {option.description}
-                </p>
-
-                {/* Action Button */}
-                <div className="flex justify-center">
-                  {option.isDisabled ? (
-                    <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r ${option.gradient} text-white font-semibold shadow-lg opacity-80`}>
-                      <span>Under Construction</span>
-                    </div>
-                  ) : (
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className={`inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r ${option.gradient} text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300`}
-                    >
-                      <span>Continue</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-
-              {/* Decorative elements */}
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:bg-white/20 transition-colors"></div>
-            </motion.div>
-          );
-        })}
+              <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${option.iconClass}`}>
+                <option.icon className="h-5 w-5" aria-hidden />
+              </span>
+              <h3 className="mt-5 text-2xl font-semibold text-ink">Log in for {option.title}</h3>
+              <p className="mt-2 text-[0.95rem] leading-relaxed text-[#4A3F42]">{option.description}</p>
+              <span className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-ink">
+                Continue
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" aria-hidden />
+              </span>
+            </Link>
+          </Reveal>
+        ))}
       </div>
-    </section>
+    </Section>
   );
 }

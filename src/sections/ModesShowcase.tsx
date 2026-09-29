@@ -1,160 +1,165 @@
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { Section, SectionHead } from "./ui";
 
-const mode121Light = new URL("../Assets/121LightMode.png", import.meta.url).href;
-const mode121Dark = new URL("../Assets/121_dARKmODE.png", import.meta.url).href;
-const mode121Graph = new URL("../Assets/121GraphMode.png", import.meta.url).href;
-const mode62Light = new URL("../Assets/62LightMode.png", import.meta.url).href;
-const mode62Dark = new URL("../Assets/62DarkMode.png", import.meta.url).href;
-const mode62Graph = new URL("../Assets/62GraphMode.png", import.meta.url).href;
+const mode121Light = new URL("../Assets/121LightMode.webp", import.meta.url).href;
+const mode121Dark = new URL("../Assets/121_dARKmODE.webp", import.meta.url).href;
+const mode121Graph = new URL("../Assets/121GraphMode.webp", import.meta.url).href;
+const mode62Light = new URL("../Assets/62LightMode.webp", import.meta.url).href;
+const mode62Dark = new URL("../Assets/62DarkMode.webp", import.meta.url).href;
+const mode62Graph = new URL("../Assets/62GraphMode.webp", import.meta.url).href;
 
-const modeGroups = [
+const themes = ["Light", "Dark", "Graph"] as const;
+type Theme = (typeof themes)[number];
+
+const layouts = [
   {
     id: "12x1",
-    title: "12:1 Mode",
+    title: "12:1",
     subtitle: "12 rows, 1 column",
     description:
-      "Built for uninterrupted vertical lead review, 12:1 mode gives clinicians a continuous single-column reading layout that works especially well for focused morphology inspection, print-style review, and calm side-by-side theme switching.",
+      "One lead per row in a continuous single column. Suits focused morphology inspection and print-style review.",
     highlights: [
-      "Best for full sequential lead review with a familiar report-like flow",
-      "Ideal when cardiologists want one lead per row for cleaner long-form reading",
-      "Available in Light, Dark, and Graph presentation styles"
+      "Full sequential lead review with a familiar report-like flow",
+      "Cleaner long-form reading, one lead per row",
+      "Light, Dark and Graph styles"
     ],
-    variants: [
-      {
-        title: "Light Mode",
-        image: mode121Light,
-        caption: "Bright clinical canvas for clear day-shift review"
-      },
-      {
-        title: "Dark Mode",
-        image: mode121Dark,
-        caption: "Reduced glare for focused long-session monitoring"
-      },
-      {
-        title: "Graph Mode",
-        image: mode121Graph,
-        caption: "ECG-paper style overlay for manual trace interpretation"
-      }
-    ]
+    images: { Light: mode121Light, Dark: mode121Dark, Graph: mode121Graph } as Record<Theme, string>
   },
   {
     id: "6x2",
-    title: "6:2 Mode",
+    title: "6:2",
     subtitle: "6 rows, 2 columns",
     description:
-      "Designed for compact comparison, 6:2 mode organizes leads into two balanced columns so teams can compare related waveform groups faster while keeping more information visible on a single screen.",
+      "Leads split into two balanced columns, so related waveforms sit side by side and more fits on one screen.",
     highlights: [
-      "Useful for quick cross-lead comparison during active acquisition",
-      "Fits more waveform context in one viewport without losing readability",
-      "Supports Light, Dark, and Graph styles for different clinical preferences"
+      "Quick cross-lead comparison during live acquisition",
+      "More waveform context in one viewport, still readable",
+      "Light, Dark and Graph styles"
     ],
-    variants: [
-      {
-        title: "Light Mode",
-        image: mode62Light,
-        caption: "High-clarity layout for broad lead comparison"
-      },
-      {
-        title: "Dark Mode",
-        image: mode62Dark,
-        caption: "Comfortable low-glare monitoring for longer sessions"
-      },
-      {
-        title: "Graph Mode",
-        image: mode62Graph,
-        caption: "Grid-backed review for measurement-friendly interpretation"
-      }
-    ]
+    images: { Light: mode62Light, Dark: mode62Dark, Graph: mode62Graph } as Record<Theme, string>
   }
 ];
 
-export function ModesShowcase() {
+const themeCaptions: Record<Theme, string> = {
+  Light: "Bright clinical canvas for day-shift review",
+  Dark: "Reduced glare for long monitoring sessions",
+  Graph: "ECG-paper grid for manual measurement"
+};
+
+function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange
+}: {
+  label: string;
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+}) {
   return (
-    <section id="modes" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
-      <div className="mb-12 max-w-3xl space-y-4">
-        <Badge className="uppercase tracking-[0.4em]">Display Modes</Badge>
-        <h2 className="section-heading">
-          Switch between 12:1 and 6:2 layouts across light, dark, and graph views
-        </h2>
-        <p className="section-subheading">
-          CardioX lets clinicians choose the waveform arrangement that best fits the task at
-          hand. Use 12:1 for long-form lead-by-lead review, or switch to 6:2 for denser
-          comparison across two columns. Each layout is available in Light, Dark, and Graph
-          styles so teams can work in the viewing mode that feels most natural.
-        </p>
-      </div>
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-ink/[0.07] p-1">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          role="radio"
+          aria-checked={value === opt}
+          onClick={() => onChange(opt)}
+          className={cn(
+            "rounded-full px-4 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B93A00]",
+            value === opt ? "bg-ink text-white shadow" : "text-ink/70 hover:text-ink"
+          )}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+}
 
-      <div className="space-y-12">
-        {modeGroups.map((group, groupIndex) => (
-          <motion.div
-            key={group.id}
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.75, delay: groupIndex * 0.08 }}
-            viewport={{ once: true, amount: 0.2 }}
-            className="rounded-[36px] border border-white/10 bg-white/5 p-6 shadow-glow backdrop-blur-xl"
-          >
-            <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-[0.9fr_1.4fr]">
-              <div className="space-y-5">
-                <div>
-                  <Badge variant="neutral" className="tracking-[0.3em]">
-                    {group.subtitle}
-                  </Badge>
-                  <h3 className="mt-4 font-display text-3xl text-white">{group.title}</h3>
-                  <p className="mt-4 text-sm leading-7 text-white/70">{group.description}</p>
-                </div>
+export function ModesShowcase() {
+  const [layoutId, setLayoutId] = useState("12x1");
+  const [theme, setTheme] = useState<Theme>("Dark");
+  const layout = layouts.find((l) => l.id === layoutId) ?? layouts[0];
+  const image = layout.images[theme];
 
-                <div className="space-y-3">
-                  {group.highlights.map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/75"
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
+  return (
+    <Section id="modes">
+      <SectionHead
+        eyebrow="Display modes"
+        title="Two lead layouts, three viewing styles"
+        lede="Pick the arrangement that fits the task. 12:1 for lead-by-lead reading, 6:2 for denser comparison. Each comes in Light, Dark and Graph."
+      />
 
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {group.variants.map((variant, variantIndex) => (
-                  <motion.div
-                    key={variant.title}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.55, delay: variantIndex * 0.08 }}
-                    viewport={{ once: true, amount: 0.2 }}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.6fr)] lg:gap-12">
+        <div className="flex flex-col gap-7">
+          <div>
+            <p className="mb-2 font-mono text-[0.68rem] uppercase tracking-[0.2em] text-[#6B5C60]">Layout</p>
+            <div className="grid grid-cols-2 gap-3">
+              {layouts.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  aria-pressed={l.id === layoutId}
+                  onClick={() => setLayoutId(l.id)}
+                  className={cn(
+                    "rounded-xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B93A00]",
+                    l.id === layoutId ? "border-ink bg-ink text-white" : "border-ink/20 bg-white/50 hover:border-ink/50"
+                  )}
+                >
+                  <span className="block font-head text-2xl font-semibold">{l.title}</span>
+                  <span
+                    className={cn(
+                      "block font-mono text-[0.65rem] uppercase tracking-[0.14em]",
+                      l.id === layoutId ? "text-white/60" : "text-[#6B5C60]"
+                    )}
                   >
-                    <Card className="border-white/10 bg-slate-950/40">
-                      <CardHeader>
-                        <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80">
-                          <div className="relative aspect-[16/9] w-full">
-                            <img
-                              src={variant.image}
-                              alt={`${group.title} ${variant.title}`}
-                              loading="lazy"
-                              className="absolute inset-0 h-full w-full object-contain object-center p-2"
-                            />
-                          </div>
-                        </div>
-                        <p className="text-xs uppercase tracking-[0.35em] text-white/40">
-                          {variant.title}
-                        </p>
-                        <CardTitle>{variant.title}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <CardDescription>{variant.caption}</CardDescription>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
+                    {l.subtitle}
+                  </span>
+                </button>
+              ))}
             </div>
-          </motion.div>
-        ))}
+          </div>
+
+          <div>
+            <p className="mb-2 font-mono text-[0.68rem] uppercase tracking-[0.2em] text-[#6B5C60]">Style</p>
+            <Segmented label="Viewing style" options={themes} value={theme} onChange={setTheme} />
+            <p className="mt-3 text-sm text-[#4A3F42]">{themeCaptions[theme]}</p>
+          </div>
+
+          <div>
+            <p className="leading-relaxed text-[#4A3F42]">{layout.description}</p>
+            <ul className="mt-4 divide-y divide-ink/15 border-y border-ink/15">
+              {layout.highlights.map((h) => (
+                <li key={h} className="py-3 text-[0.95rem] text-[#4A3F42]">
+                  {h}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl bg-ink p-1.5 shadow-[0_18px_40px_-18px_rgba(18,16,15,0.55)] ring-1 ring-black/60 lg:self-start">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-black">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.img
+                key={image}
+                src={image}
+                alt={`${layout.title} layout, ${theme} style`}
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-contain"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
+              />
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
-    </section>
+    </Section>
   );
 }

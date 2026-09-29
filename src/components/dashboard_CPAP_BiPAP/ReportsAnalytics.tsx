@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Calendar, Download, Wind, Settings, BarChart3, LineChart, PieChart as PieIcon } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart as RLineChart, Line, PieChart, Pie, Cell } from "recharts";
-const deckmountLogo = new URL("../../assets/DeckMount Photo.png", import.meta.url).href;
+const deckmountLogo = new URL("../../Assets/DeckMount Photo.png", import.meta.url).href;
 
 export default function ReportsAnalytics() {
   const navigate = useNavigate();

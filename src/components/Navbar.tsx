@@ -1,117 +1,71 @@
-  import { useState } from "react";
-import { Link } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "./Logo";
-import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "#hero", label: "Overview" },
-  { href: "#gallery", label: "Gallery" },
   { href: "#overview", label: "Product" },
-  { href: "#features", label: "Highlights" },
-  { href: "#dashboard", label: "Dashboard" },
-  { href: "#control", label: "Control" },
-  { href: "#modes", label: "Modes" },
+  { href: "#rhythm", label: "Rhythm system" },
+  { href: "#gallery", label: "Screens" },
+  { href: "#modes", label: "Display modes" },
   { href: "#analysis", label: "Analysis" },
-  { href: "#waveform-analysis", label: "Waveform" },
   { href: "#device", label: "Device" },
   { href: "#support", label: "Support" }
 ];
+
+const linkClass =
+  "text-[0.8rem] font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:text-white focus-visible:underline";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <header className="fixed inset-x-0 top-0 z-50 bg-slate-950/75 backdrop-blur-xl">
-      <div className="mx-auto flex items-center px-4 py-3 md:px-8" style={{ maxWidth: "1280px", height: "64px" }}>
-        <div className="flex-none">
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-ink/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-[84rem] items-center gap-8 px-5 sm:px-8">
+        <a href="#hero" className="flex-none" aria-label="CardioX home">
           <Logo />
-        </div>
-        
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex flex-1 items-center justify-center" style={{ gap: "1.5rem" }}>
-          {navItems.map((item) =>
-            item.href.startsWith("/") ? (
-              <Link
-                key={item.href}
-                to={item.href}
-                style={{ fontSize: "0.65rem", letterSpacing: "0.18em", whiteSpace: "nowrap" }}
-                className="font-medium uppercase text-white/70 transition hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <a
-                key={item.href}
-                href={item.href}
-                style={{ fontSize: "0.65rem", letterSpacing: "0.18em", whiteSpace: "nowrap" }}
-                className="font-medium uppercase text-white/70 transition hover:text-white"
-              >
-                {item.label}
-              </a>
-            )
-          )}
-          <a
-            href="#login-section"
-            style={{ fontSize: "0.65rem", letterSpacing: "0.18em", whiteSpace: "nowrap" }}
-            className="font-medium uppercase text-white/70 transition hover:text-white"
-          >
-            Login
-          </a>
+        </a>
+
+        <nav className="hidden flex-1 items-center gap-7 md:flex" aria-label="Sections">
+          {navItems.map((item) => (
+            <a key={item.href} href={item.href} className={linkClass}>
+              {item.label}
+            </a>
+          ))}
         </nav>
 
-        {/* Mobile Menu Button */}
+        <a
+          href="#login-section"
+          className="ml-auto hidden rounded-full bg-brand-orange px-5 py-2 text-[0.8rem] font-semibold text-ink transition hover:bg-[#ff7d38] md:inline-flex"
+        >
+          Log in
+        </a>
+
         <button
-          className="ml-auto flex md:hidden text-white/70 hover:text-white transition"
-          onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle menu"
+          className="ml-auto text-white/80 transition hover:text-white md:hidden"
+          onClick={() => setIsOpen((open) => !open)}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
         >
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="md:hidden overflow-y-auto border-t border-white/10"
-          >
-            <div className="space-y-4 px-6 pb-6 pt-4">
-              {navItems.map((item) =>
-                item.href.startsWith("/") ? (
-                  <motion.div key={item.href} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Link
-                      to={item.href}
-                      className={cn("block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition", "hover:bg-white/10 hover:text-white")}
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  </motion.div>
-                ) : (
-                  <motion.a
-                    key={item.href}
-                    href={item.href}
-                    className={cn("block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition", "hover:bg-white/10 hover:text-white")}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {item.label}
-                  </motion.a>
-                )
-              )}
-              <motion.a
-                href="#login-section"
-                className={cn("block rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-[0.75rem] font-medium uppercase tracking-[0.28em] text-white/80 transition", "hover:bg-white/10 hover:text-white")}
+
+      {isOpen && (
+        <div className="border-t border-white/10 bg-ink md:hidden">
+          <div className="mx-auto flex max-w-[84rem] flex-col px-5 pb-5 pt-2 sm:px-8">
+            {[...navItems, { href: "#login-section", label: "Log in" }].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
                 onClick={() => setIsOpen(false)}
+                className="border-b border-white/10 py-3.5 text-base font-medium text-white/85"
               >
-                Login
-              </motion.a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

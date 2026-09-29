@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Wind, Lock, User, ArrowRight, Activity } from 'lucide-react';
-const deckmountLogo = new URL('../../assets/DeckMount Photo.png', import.meta.url).href;
+const deckmountLogo = new URL('../../Assets/DeckMount Photo.png', import.meta.url).href;
 
 export default function CPAPLogin() {
   const navigate = useNavigate();

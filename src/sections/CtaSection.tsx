@@ -1,88 +1,65 @@
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { EcgTrace, Reveal, Section, btnPrimary } from "./ui";
+
+const EMAIL_HREF =
+  "mailto:ankur.kumar@deckmount.in?subject=CardioX%20Clinical%20Inquiry&body=Hi%20Deckmount%20team%2C%0A%0AI%20am%20interested%20in%20connecting%20with%20you%20about%20CardioX.%20Please%20reach%20out%20with%20the%20next%20steps.%0A%0ARegards%2C%0A";
+
+const contacts = [
+  { label: "Solutions team", text: "ankur.kumar@deckmount.in", href: "mailto:ankur.kumar@deckmount.in" },
+  { label: "Direct", text: "+91 87000 76769", href: "tel:+918700076769" },
+  { label: "Company", text: "1800 309 2499", href: "tel:18003092499" },
+  { label: "Web", text: "deckmount.in", href: "https://deckmount.in/" }
+];
 
 export function CtaSection() {
   return (
-    <section
-      id="cta"
-      className="relative mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[80rem] overflow-hidden rounded-[40px] border border-brand-orange/40 bg-gradient-to-br from-brand-orange/60 via-brand-electric/30 to-brand-orange/10 px-6 py-20 text-white shadow-[0_0_120px_rgba(255,138,61,0.28)]"
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        viewport={{ once: true, amount: 0.5 }}
-        className="mx-auto flex max-w-3xl flex-col items-center text-center"
-      >
-        <Badge variant="neutral" className="tracking-[0.4em] text-slate-950">
-          Ready to scale
-        </Badge>
-        <h2 className="mt-6 font-display text-3xl text-white md:text-4xl">
-          Deploy CardioX today and unlock unified cardiopulmonary intelligence
-        </h2>
-        <p className="mt-4 text-base text-white/80">
-          ECG module is production-ready, backend integration slots are open, and the
-          architecture blueprint already includes CPAP, BiPAP, and Oxygen telemetry.
-          Let’s build your connected cardiac command center.
-        </p>
-        <div className="mt-6 space-y-2 text-sm text-white/80">
-          <p>
-            <strong>Solutions Team:</strong>{" "}
-            <a
-              href="mailto:ankur.kumar@deckmount.in"
-              className="underline decoration-white/70 decoration-dashed"
-            >
-              ankur.kumar@deckmount.in
-            </a>
-          </p>
-          <p>
-            <strong>Direct:</strong>{" "}
-            <a href="tel:+918700076769" className="underline decoration-white/70 decoration-dashed">
-              +91 87000 76769
-            </a>{" "}
-            • <strong>Company:</strong>{" "}
-            <a href="tel:18003092499" className="underline decoration-white/70 decoration-dashed">
-              1800 309 2499
-            </a>
-          </p>
-          <p>
-            <strong>HQ:</strong> 683, Udyog Vihar, Phase 5, Gurugram, Haryana 122016 ·{" "}
-            <a
-              href="https://deckmount.in/"
-              target="_blank"
-              rel="noreferrer"
-              className="underline decoration-white/70 decoration-dashed"
-            >
-              deckmount.in
-            </a>
-          </p>
+    <Section id="cta" className="py-8 md:py-12">
+      <Reveal>
+        <div className="relative overflow-hidden rounded-3xl bg-ink px-6 py-14 text-white shadow-[0_30px_80px_-30px_rgba(18,16,15,0.6)] sm:px-12 md:py-20">
+          <EcgTrace className="pointer-events-none absolute inset-x-0 top-1/2 h-40 -translate-y-1/2 opacity-[0.18]" />
+          <div className="relative mx-auto max-w-3xl text-center">
+            <p className="font-mono text-[0.72rem] uppercase tracking-[0.24em] text-[#FF8A3D]">Ready to deploy</p>
+            <h2 className="mt-4 font-head text-3xl font-semibold leading-[1.1] md:text-5xl">
+              Bring ECG, CPAP, BiPAP and oxygen data into one place
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/70">
+              The ECG module is production-ready, backend integration slots are open, and
+              the architecture already covers CPAP, BiPAP and oxygen telemetry.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+              <a href="tel:+918700076769" className={btnPrimary}>
+                Schedule a call
+              </a>
+              <a
+                href={EMAIL_HREF}
+                className="inline-flex items-center rounded-full border border-white/25 px-6 py-3 text-sm font-semibold text-white transition hover:border-white hover:bg-white/10"
+              >
+                Email the team
+              </a>
+            </div>
+            <dl className="mt-12 grid gap-x-8 gap-y-4 border-t border-white/15 pt-8 text-left sm:grid-cols-2">
+              {contacts.map((c) => (
+                <div key={c.label}>
+                  <dt className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-white/45">{c.label}</dt>
+                  <dd>
+                    <a
+                      href={c.href}
+                      target={c.href.startsWith("http") ? "_blank" : undefined}
+                      rel={c.href.startsWith("http") ? "noreferrer" : undefined}
+                      className="text-white/90 underline decoration-white/30 underline-offset-4 transition hover:decoration-white"
+                    >
+                      {c.text}
+                    </a>
+                  </dd>
+                </div>
+              ))}
+              <div className="sm:col-span-2">
+                <dt className="font-mono text-[0.65rem] uppercase tracking-[0.2em] text-white/45">HQ</dt>
+                <dd className="text-white/80">683, Udyog Vihar, Phase 5, Gurugram, Haryana 122016</dd>
+              </div>
+            </dl>
+          </div>
         </div>
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <Button asChild className="min-w-[200px] bg-slate-950 text-white hover:bg-slate-800">
-            <a href="tel:+918700076769">Schedule Strategy Call</a>
-          </Button>
-          <Button
-            variant="secondary"
-            className="min-w-[200px] border-white/50 bg-white/20 text-white hover:bg-white/40"
-          >
-            Download Architecture Deck
-          </Button>
-        </div>
-        <div className="mt-6 flex flex-col gap-2 text-xs uppercase tracking-[0.35em] text-white/60 sm:flex-row sm:items-center sm:justify-center">
-          <span>Bundled installers • API-ready • Offline mode • Crash recovery</span>
-          <Button
-            asChild
-            variant="ghost"
-            className="mt-2 inline-flex w-auto rounded-full border border-white/30 bg-white/10 px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.3em] text-white hover:bg-white/20 sm:mt-0"
-          >
-            <a href="mailto:ankur.kumar@deckmount.in?subject=CardioX%20Clinical%20Inquiry&body=Hi%20Deckmount%20team%2C%0A%0AI%20am%20interested%20in%20connecting%20with%20you%20about%20CardioX.%20Please%20reach%20out%20with%20the%20next%20steps.%0A%0ARegards%2C%0A">
-              Connect via Email
-            </a>
-          </Button>
-        </div>
-      </motion.div>
-    </section>
+      </Reveal>
+    </Section>
   );
 }
-

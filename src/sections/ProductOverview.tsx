@@ -1,6 +1,5 @@
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Check } from "lucide-react";
+import { Reveal, Section, SectionHead } from "./ui";
 
 const productPillars = [
   {
@@ -10,13 +9,13 @@ const productPillars = [
       "Desktop-grade application engineered for clinicians, technicians, and home healthcare teams. CardioX keeps critical rhythms visible across every environment."
   },
   {
-    title: "Deployment Ready",
+    title: "Deployment ready",
     subtitle: "Windows & macOS builds",
     description:
-      "Distributed via PyInstaller bundles with offline-first data storage, ensuring hospitals and remote clinics remain connected to insights at all times."
+      "Install on Windows or macOS with a signed installer. Reports are saved on the device first and sync once a connection is available, so clinics with unreliable internet keep working."
   },
   {
-    title: "Secure by Design",
+    title: "Secure by design",
     subtitle: "Cloud + local resilience",
     description:
       "Redundant storage keeps reports safe, with automated sync to CardioX Cloud and encrypted handoff for API integrations."
@@ -28,66 +27,50 @@ const capabilityHighlights = [
   "Auto-calculated PR, QRS, QT/QTc, ST, and trajectory metrics",
   "Combined PDF + JSON report generation in one click",
   "Adaptive noise reduction for high-motion capture environments",
-  "Unique share links with AWS S3, Azure, GCS, API, FTP, or Dropbox destinations",
+  "Send finished reports to the storage your team already uses, from S3 and Azure to FTP and Dropbox",
   "Offline-first workflows with smart duplicate capture prevention"
 ];
 
 export function ProductOverview() {
   return (
-    <section id="overview" className="mx-auto max-w-[100rem] px-6 py-24 lg:px-8">
-      <div className="grid gap-12 md:grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
-        <div>
-          <Badge className="uppercase tracking-[0.4em]">Product Overview</Badge>
-          <h2 className="mt-6 section-heading">
-            Deckmount ECG Monitor empowers continuous cardiac intelligence
-          </h2>
-          <p className="mt-4 section-subheading">
-            Built to detect. Designed to last. CardioX transforms ECG data into
-            instantaneous insights while preserving clinician-friendly workflows.
-            Optimized for reliability, crash recovery, and rapid deployment across
-            hospital networks.
-          </p>
-          <div className="mt-8 space-y-4 text-sm text-white/70">
-            {capabilityHighlights.map((item) => (
-              <motion.div
-                key={item}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4 }}
-                viewport={{ once: true, amount: 0.5 }}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur"
-              >
-                <span className="mt-1 inline-flex h-2 w-2 flex-none rounded-full bg-brand-electric shadow-glow" />
-                <p>{item}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col gap-6">
-          {productPillars.map((pillar, index) => (
-            <motion.div
-              key={pillar.title}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true, amount: 0.4 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-brand-electric">{pillar.title}</CardTitle>
-                  <Badge variant="neutral" className="tracking-[0.3em]">
+    <Section id="overview">
+      <SectionHead
+        eyebrow="Product"
+        title="Continuous cardiac monitoring that keeps working when the network doesn't"
+        lede="CardioX turns ECG data into instant readings while keeping the workflow clinicians already know. Built for reliability, crash recovery and quick rollout across hospital networks."
+      />
+
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
+        <div className="divide-y divide-ink/15 border-y border-ink/15">
+          {productPillars.map((pillar, i) => (
+            <Reveal key={pillar.title} delay={i * 0.06}>
+              <div className="grid gap-2 py-6 sm:grid-cols-[13rem_1fr] sm:gap-8">
+                <div>
+                  <h3 className="text-xl font-semibold text-ink">{pillar.title}</h3>
+                  <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.16em] text-[#B93A00]">
                     {pillar.subtitle}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription>{pillar.description}</CardDescription>
-                </CardContent>
-              </Card>
-            </motion.div>
+                  </p>
+                </div>
+                <p className="leading-relaxed text-[#4A3F42]">{pillar.description}</p>
+              </div>
+            </Reveal>
           ))}
         </div>
+
+        <Reveal delay={0.1}>
+          <div className="h-full rounded-2xl bg-ink p-6 text-white shadow-[0_18px_40px_-18px_rgba(18,16,15,0.55)] sm:p-8">
+            <p className="font-mono text-[0.7rem] uppercase tracking-[0.22em] text-[#FF8A3D]">What it does</p>
+            <ul className="mt-5 space-y-4">
+              {capabilityHighlights.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-[0.95rem] leading-snug text-white/85">
+                  <Check className="mt-0.5 h-4 w-4 flex-none text-[#FF8A3D]" aria-hidden />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
       </div>
-    </section>
+    </Section>
   );
 }
-
