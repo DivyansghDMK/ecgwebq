@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, Filter, X, User as UserIcon, Phone, Hash, Trash2, UserPlus, Clock } from "lucide-react";
 import { useDebounce } from "../../../hooks/useDebounce";
-import { fetchReports } from "../../../services/reportsApi";
 import { fetchS3Files } from "../../../api/ecgApi";
 
 type User = {
@@ -18,348 +17,321 @@ interface FilterState {
   serialId: string;
   username: string;
   phoneNumber: string;
+  deviceId: string;
 }
+
+type PaginationState = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+};
+
+const PAGE_SIZE = 20;
 
 export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; message: string }>({ isValid: true, message: '' });
+  const [deviceIdValidation, setDeviceIdValidation] = useState<{ isValid: boolean; message: string }>({ isValid: true, message: '' });
   const [filters, setFilters] = useState<FilterState>({
     serialId: '',
     username: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    deviceId: ''
   });
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const usersPerPage = 10;
-
-  // Fetch ALL files from S3 by paginating through all pages
-  const fetchAllS3Files = async (): Promise<any[]> => {
-    const allFiles: any[] = [];
-    let s3Page = 1;
-    let hasMore = true;
-    const limit = 20; // Reduced to avoid Lambda timeout
-
-    while (hasMore) {
-      try {
-        const response = await fetchS3Files(s3Page, limit, '');
-        allFiles.push(...response.files);
-        
-        hasMore = response.pagination?.hasNext || false;
-        s3Page++;
-        
-        // Safety limit to prevent infinite loops
-        if (s3Page > 100) {
-          console.warn('[UsersPage] Reached safety limit of 100 pages');
-          break;
-        }
-      } catch (error) {
-        console.error(`[UsersPage] Error fetching page ${s3Page}:`, error);
-        hasMore = false;
-      }
-    }
-
-    return allFiles;
+  const [pagination, setPagination] = useState<PaginationState>({
+    total: 0,
+    page: 1,
+    limit: PAGE_SIZE,
+    totalPages: 1,
+    hasNext: false,
+    hasPrev: false,
+  });
+  const debouncedSearch = useDebounce(search, 400);
+  const debouncedFilters = {
+    serialId: useDebounce(filters.serialId, 300),
+    username: useDebounce(filters.username, 300),
+    phoneNumber: useDebounce(filters.phoneNumber, 300),
+    deviceId: useDebounce(filters.deviceId, 300),
   };
 
-  // Extract user data from filename
-  const extractUserFromFilename = (filename: string): { name: string | null; phone: string | null } => {
-    let extractedName: string | null = null;
-    let extractedPhone: string | null = null;
+  const buildUsersFromFiles = (files: any[]): User[] => {
+    console.log(`[UsersPage] buildUsersFromFiles called with ${files.length} files`);
 
-    // Pattern 1: user_signup_<Name>_<Date>_<Time>.json
-    // Example: user_signup_Divyaansh_20260123_141001.json
-    if (filename.toLowerCase().includes('user_signup_')) {
-      // Try multiple patterns to extract name
-      const patterns = [
-        /user_signup_([^_]+(?:_[^_]+)*?)_\d{8}_\d{6}\.json/i,
-        /user_signup_([a-zA-Z0-9]+(?:_[a-zA-Z0-9]+)*)_\d{8}_\d{6}\.json/i,
-        /user_signup_([a-zA-Z]+(?:_[a-zA-Z]+)*)/i,
-        /user_signup_([a-zA-Z0-9]+)/i
-      ];
-
-      for (const pattern of patterns) {
-        const match = filename.match(pattern);
-        if (match && match[1]) {
-          extractedName = match[1].replace(/[-_]/g, ' ').trim();
-          break;
-        }
-      }
-    }
-
-    // Pattern 2: Extract phone number (10 digits)
-    const phoneMatch = filename.match(/(\d{10})/);
-    if (phoneMatch) {
-      extractedPhone = phoneMatch[1];
-    }
-
-    // Pattern 3: Extract name from other patterns if not found yet
-    if (!extractedName) {
-      // Try to extract name before phone number
-      if (phoneMatch && phoneMatch.index) {
-        const nameBeforePhone = filename.substring(0, phoneMatch.index);
-        const nameParts = nameBeforePhone.split(/[-_]/).filter(part => 
-          part && 
-          !part.match(/^\d+$/) && 
-          !part.toLowerCase().includes('user') && 
-          !part.toLowerCase().includes('signup')
-        );
-        if (nameParts.length > 0) {
-          extractedName = nameParts.join(' ').trim();
-        }
+    const filesByRecord = files.reduce((acc, file) => {
+      const recordKey = String(file?.recordId ?? file?.key ?? "");
+      if (!recordKey) {
+        return acc;
       }
 
-      // Generic name extraction (fallback)
-      if (!extractedName) {
-        const nameMatch = filename.match(/([A-Za-z][A-Za-z0-9]+(?:_[A-Za-z0-9]+)*)/);
-        if (nameMatch && nameMatch[1]) {
-          const potentialName = nameMatch[1].replace(/[-_]/g, ' ').trim();
-          if (potentialName.length > 2 && 
-              !potentialName.toLowerCase().includes('user') && 
-              !potentialName.toLowerCase().includes('signup') &&
-              !potentialName.toLowerCase().includes('json')) {
-            extractedName = potentialName;
-          }
-        }
-      }
+      const existingFiles = acc.get(recordKey) ?? [];
+      existingFiles.push(file);
+      acc.set(recordKey, existingFiles);
+      return acc;
+    }, new Map<string, any[]>());
+
+    console.log(`[UsersPage] Grouped files by recordId: ${filesByRecord.size} unique records`);
+    
+    // Log a sample record grouping
+    const sampleRecordId = Array.from(filesByRecord.keys())[0];
+    if (sampleRecordId) {
+      const sampleGroup = filesByRecord.get(sampleRecordId);
+      console.log(`[UsersPage] Sample record ${sampleRecordId} has ${sampleGroup?.length} files:`, 
+        sampleGroup?.map((f: any) => ({
+          key: f?.key,
+          type: String(f?.key ?? f?.name ?? "").toLowerCase().endsWith('.json') ? 'json' : 'pdf',
+          hasPatient: f && 'patient' in f,
+          patientName: f?.patient?.name
+        }))
+      );
     }
 
-    return { name: extractedName, phone: extractedPhone };
+    const pageUsers = Array.from(filesByRecord.entries()).reduce<User[]>((acc, entry) => {
+      const [recordId, groupedFiles] = entry as [string, any[]];
+      const jsonFileWithPatient = groupedFiles.find((file: any) => {
+        const key = String(file?.key ?? file?.name ?? "").toLowerCase();
+        return key.endsWith(".json") && file?.patient?.name;
+      });
+      const anyFileWithPatient = groupedFiles.find((file: any) => file?.patient?.name);
+      const preferredFile = jsonFileWithPatient ?? anyFileWithPatient ?? groupedFiles[0];
+      const name = preferredFile?.patient?.name?.trim() || "";
+      const phone = preferredFile?.patient?.phone?.trim() || "";
+
+      console.log(`[UsersPage] Processing record ${recordId}:`, {
+        jsonFileWithPatient: !!jsonFileWithPatient,
+        anyFileWithPatient: !!anyFileWithPatient,
+        preferredFileType: String(preferredFile?.key ?? preferredFile?.name ?? "").toLowerCase().endsWith('.json') ? 'json' : 'pdf',
+        hasPatient: preferredFile && 'patient' in preferredFile,
+        patientName: name,
+        patientPhone: phone
+      });
+
+      groupedFiles.forEach((file: any) => {
+        const key = String(file?.key ?? file?.name ?? "").toLowerCase();
+        if (key.endsWith(".json") && !file?.patient) {
+          console.warn("[UsersPage] JSON file missing patient payload", {
+            key: file?.key ?? null,
+            name: file?.name ?? null,
+            recordId: file?.recordId ?? null,
+          });
+        }
+      });
+
+      // Include all records regardless of patient data presence
+      // Use fallback values for missing data
+      const displayName = name || "—";
+      const displayPhone = phone || "—";
+      const username = name ? name.replace(/\s+/g, "").toLowerCase() : recordId;
+
+      acc.push({
+        recordId,
+        username: username,
+        fullName: displayName,
+        phone: displayPhone,
+        key: preferredFile?.key,
+        lastModified: preferredFile?.lastModified ?? groupedFiles[0]?.lastModified
+      });
+
+      return acc;
+    }, []);
+
+    const typedPageUsers = pageUsers as User[];
+    console.log(`[UsersPage] Final user count after mapping: ${typedPageUsers.length}`);
+
+    return typedPageUsers.sort((a: User, b: User) => {
+      if (a.lastModified && b.lastModified) {
+        return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
+      }
+      if (a.lastModified && !b.lastModified) return -1;
+      if (!a.lastModified && b.lastModified) return 1;
+      if (a.phone && !b.phone) return -1;
+      if (!a.phone && b.phone) return 1;
+      // Handle "—" in sorting - treat as lowest priority
+      if (a.fullName === "—" && b.fullName !== "—") return 1;
+      if (a.fullName !== "—" && b.fullName === "—") return -1;
+      return a.fullName.localeCompare(b.fullName);
+    });
   };
 
-  // Fetch real users from S3 bucket data
+  // Fetch only the currently selected S3 page.
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchUsers = async () => {
       try {
         setLoading(true);
+        setLoadError(null);
         
-        console.log('[UsersPage] Starting to fetch all S3 files...');
+        const query = debouncedSearch.trim();
         
-        // Fetch ALL files from S3 bucket (paginate through all pages)
-        const allS3Files = await fetchAllS3Files();
-        console.log(`[UsersPage] Fetched ${allS3Files.length} total S3 files`);
+        // Combine all filters into a single search query for backend
+        const searchParts = [];
         
-        // Also fetch reports data
-        let reportsData;
-        try {
-          reportsData = await fetchReports();
-          console.log(`[UsersPage] Fetched ${reportsData.reports.length} reports`);
-        } catch (error) {
-          console.warn('[UsersPage] Failed to fetch reports:', error);
-          reportsData = { reports: [] };
+        if (debouncedSearch.trim()) {
+          searchParts.push(debouncedSearch.trim());
+        }
+        if (debouncedFilters.deviceId.trim()) {
+          searchParts.push(debouncedFilters.deviceId.trim());
+        }
+        if (debouncedFilters.serialId.trim()) {
+          searchParts.push(debouncedFilters.serialId.trim());
+        }
+        if (debouncedFilters.username.trim()) {
+          searchParts.push(debouncedFilters.username.trim());
+        }
+        if (debouncedFilters.phoneNumber.trim()) {
+          searchParts.push(debouncedFilters.phoneNumber.trim());
         }
         
-        // Extract users from S3 files - ONLY use data from files, no generation
-        const s3Users = allS3Files.reduce((acc: User[], file) => {
-          const { name, phone } = extractUserFromFilename(file.name);
-          
-          if (name) {
-            const fullName = name;
-            const username = name.replace(/\s+/g, '').toLowerCase();
-            const phoneNumber = phone || '';
-            
-            // Use recordId from file, not generated serial ID
-            const recordId = file.recordId || file.key || '';
-            
-            // Check if user already exists (by recordId first, then by phone if available, otherwise by username)
-            const existingUser = recordId
-              ? acc.find(u => u.recordId === recordId)
-              : phoneNumber 
-                ? acc.find(u => u.phone === phoneNumber && u.phone !== '')
-                : acc.find(u => u.username === username);
-            
-            if (!existingUser) {
-              acc.push({
-                recordId: recordId, // Use actual recordId from file
-                username: username,
-                fullName: fullName,
-                phone: phoneNumber,
-                key: file.key,
-                lastModified: file.lastModified
-              });
-            }
+        const combinedQuery = searchParts.join(' ');
+        console.log(`[UsersPage] Fetching S3 page ${currentPage} with limit ${PAGE_SIZE}, query: "${combinedQuery}"`);
+        const response = await fetchS3Files(currentPage, PAGE_SIZE, combinedQuery, controller.signal);
+        console.log(`[UsersPage] Response for page ${currentPage}:`, response);
+
+        const files = response.files || [];
+        const pageUsers = buildUsersFromFiles(files);
+        const responsePagination = response.pagination ?? {
+          total: pageUsers.length,
+          page: currentPage,
+          limit: PAGE_SIZE,
+          totalPages: Math.max(1, Math.ceil(pageUsers.length / PAGE_SIZE)),
+          hasNext: false,
+          hasPrev: currentPage > 1,
+        };
+
+        console.log(`[UsersPage] ABOUT TO SET USERS - Input files: ${files.length}, Mapped users: ${pageUsers.length}`);
+        console.log(`[UsersPage] First 2 raw file objects:`, files.slice(0, 2));
+        console.log(`[UsersPage] First 2 mapped user objects:`, pageUsers.slice(0, 2));
+
+        setUsers(pageUsers);
+        setPagination({
+          total: responsePagination.total,
+          page: responsePagination.page,
+          limit: responsePagination.limit,
+          totalPages: responsePagination.totalPages,
+          hasNext: responsePagination.hasNext,
+          hasPrev: responsePagination.hasPrev,
+        });
+
+        setSelectedUser((prev) => {
+          if (!pageUsers.length) return null;
+          if (prev) {
+            const matchingUser = pageUsers.find((user) => user.recordId === prev.recordId);
+            if (matchingUser) return matchingUser;
           }
-          
-          return acc;
-        }, []);
-        
-        console.log(`[UsersPage] Extracted ${s3Users.length} users from S3 files`);
-        if (s3Users.length > 0) {
-          console.log('[UsersPage] Sample S3 users:', s3Users.slice(0, 3));
-        }
-        
-        // Extract users from reports data - ONLY use data from reports, no generation
-        const reportUsers = reportsData.reports.reduce((acc: User[], report) => {
-          const phone = (report as any).patient?.phone || (report as any).phoneNumber || '';
-          const name = (report as any).patient?.name || (report as any).name || (report as any).patientName || '';
-          const recordId = (report as any).recordId || (report as any).id || '';
-          
-          if (name && name.trim() !== '' && name !== 'Unknown User') {
-            const username = name.replace(/\s+/g, '').toLowerCase();
-            const phoneNumber = phone || '';
-            
-            // Check if user exists by recordId first, then by phone (if available) or by username
-            const existingUser = recordId
-              ? acc.find(u => u.recordId === recordId)
-              : phoneNumber 
-                ? acc.find(u => u.phone === phoneNumber && u.phone !== '')
-                : acc.find(u => u.username === username);
-            
-            if (!existingUser) {
-              acc.push({
-                recordId: recordId, // Use actual recordId from report
-                username: username,
-                fullName: name.trim(),
-                phone: phoneNumber
-              });
-            }
-          }
-          return acc;
-        }, s3Users); // Start with S3 users
-        
-        console.log(`[UsersPage] Total users after merging: ${reportUsers.length}`);
-        
-        // Remove duplicates - use recordId as primary identifier, then phone, then username
-        const uniqueUsers = reportUsers
-          .filter((user, index, arr) => {
-            // Prioritize recordId for deduplication
-            if (user.recordId && user.recordId !== '') {
-              return arr.findIndex(u => u.recordId === user.recordId && u.recordId !== '') === index;
-            }
-            // Then check by phone if available
-            if (user.phone && user.phone !== '') {
-              return arr.findIndex(u => u.phone === user.phone && u.phone !== '') === index;
-            }
-            // Finally check by username
-            return arr.findIndex(u => u.username === user.username) === index;
-          })
-          .sort((a, b) => {
-            // Sort by lastModified if available (newest first), then by name
-            if (a.lastModified && b.lastModified) {
-              return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
-            }
-            if (a.lastModified && !b.lastModified) return -1;
-            if (!a.lastModified && b.lastModified) return 1;
-            // Sort by name, but prioritize users with phone numbers
-            if (a.phone && !b.phone) return -1;
-            if (!a.phone && b.phone) return 1;
-            return a.fullName.localeCompare(b.fullName);
-          });
-        
-        console.log(`[UsersPage] Final unique users: ${uniqueUsers.length}`);
-        if (uniqueUsers.length > 0) {
-          console.log('[UsersPage] Sample users:', uniqueUsers.slice(0, 5));
-          // Log users with "divyaansh" in username for debugging
-          const divyaanshUsers = uniqueUsers.filter(u => 
-            u.username.includes('divyaansh') || u.fullName.toLowerCase().includes('divyaansh')
-          );
-          if (divyaanshUsers.length > 0) {
-            console.log('[UsersPage] Found Divyaansh users:', divyaanshUsers);
-          }
-        }
-        
-        setUsers(uniqueUsers);
-        if (uniqueUsers.length > 0) {
-          setSelectedUser(uniqueUsers[0]);
-        }
+          return pageUsers[0];
+        });
         
       } catch (error) {
+        if ((error as Error).name === 'AbortError') {
+          return;
+        }
         console.error('[UsersPage] Failed to fetch users from S3:', error);
-        // No fallback data - only use actual S3 data
         setUsers([]);
         setSelectedUser(null);
+        setLoadError('Failed to fetch users from S3.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchUsers();
-  }, []);
-
-  // debounced value
-  const debouncedSearch = useDebounce(search, 400);
-  const debouncedFilters = {
-    serialId: useDebounce(filters.serialId, 300),
-    username: useDebounce(filters.username, 300),
-    phoneNumber: useDebounce(filters.phoneNumber, 300),
-  };
-
-  // filtered users - search through ALL fields including filename patterns
-  const filteredUsers = useMemo(() => {
-    let result = users;
-
-    // Apply search filter (searches across all fields)
-    if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase().trim();
-      result = result.filter((u) => {
-        const searchFields = [
-          u.username,
-          u.fullName,
-          u.phone,
-          u.recordId,
-          u.key || '',
-          // Also search in variations
-          u.fullName.replace(/\s+/g, ''),
-          u.fullName.replace(/\s+/g, '_'),
-        ];
-        return searchFields.some(field => field && field.toLowerCase().includes(q));
-      });
-    }
-
-    // Apply specific filters
-    if (debouncedFilters.serialId) {
-      const filterValue = debouncedFilters.serialId.toLowerCase().trim();
-      result = result.filter(u => 
-        u.recordId.toLowerCase().includes(filterValue) ||
-        (u.key && u.key.toLowerCase().includes(filterValue))
-      );
-    }
-
-    if (debouncedFilters.username) {
-      const filterValue = debouncedFilters.username.toLowerCase().trim();
-      result = result.filter(u => 
-        u.username.toLowerCase().includes(filterValue) ||
-        u.fullName.replace(/\s+/g, '').toLowerCase().includes(filterValue)
-      );
-    }
-
-    if (debouncedFilters.phoneNumber) {
-      const filterValue = debouncedFilters.phoneNumber.trim();
-      result = result.filter(u => 
-        u.phone.includes(filterValue)
-      );
-    }
-
-    return result;
-  }, [debouncedSearch, debouncedFilters, users]);
+    return () => controller.abort();
+  }, [currentPage, debouncedSearch, debouncedFilters]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+  const totalPages = pagination.totalPages || 1;
+  const totalUsers = pagination.total || 0;
+  const currentUsers = users;
+  const pageStartIndex = currentUsers.length === 0 ? 0 : ((pagination.page - 1) * pagination.limit) + 1;
+  const pageEndIndex = currentUsers.length === 0 ? 0 : pageStartIndex + currentUsers.length - 1;
+  const visiblePageStart = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+  const visiblePageNumbers = Array.from(
+    { length: Math.min(5, totalPages) },
+    (_, index) => visiblePageStart + index
+  );
 
-  // Reset to page 1 only when filters are actively applied
+  // Reset to page 1 when search/filter criteria change.
   useEffect(() => {
-    const hasActiveFilters = debouncedSearch.trim() || debouncedFilters.serialId.trim() || debouncedFilters.username.trim() || debouncedFilters.phoneNumber.trim();
+    const hasActiveFilters = debouncedSearch.trim() || debouncedFilters.serialId.trim() || debouncedFilters.username.trim() || debouncedFilters.phoneNumber.trim() || debouncedFilters.deviceId.trim();
     if (hasActiveFilters && currentPage !== 1) {
       setCurrentPage(1);
     }
-  }, [debouncedSearch, debouncedFilters.serialId, debouncedFilters.username, debouncedFilters.phoneNumber]);
+  }, [debouncedSearch, debouncedFilters.serialId, debouncedFilters.username, debouncedFilters.phoneNumber, debouncedFilters.deviceId, currentPage]);
 
   // Handle filter input changes
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     setFilters(prev => ({
       ...prev,
-      [key]: value
+      [key]: value.trim()
     }));
   };
 
-  // Handle numeric-only input for phone number
+  // Handle alphanumeric input for device ID
+  const handleAlphanumericInput = (value: string) => {
+    const alphanumericValue = value.replace(/[^a-zA-Z0-9]/g, '').trim().slice(0, 4);
+    
+    // Validate device ID (exactly 4 alphanumeric characters)
+    let isValid = true;
+    let message = '';
+    
+    if (alphanumericValue.length > 0 && alphanumericValue.length < 4) {
+      isValid = false;
+      message = 'Enter 4 characters';
+    }
+    
+    setDeviceIdValidation({ isValid, message });
+    handleFilterChange('deviceId', alphanumericValue);
+  };
+
+  // Handle alphanumeric input for username
+  const handleUsernameInput = (value: string) => {
+    const usernameValue = value.replace(/[^a-zA-Z0-9._-]/g, '').trim();
+    handleFilterChange('username', usernameValue);
+  };
+
+  // Handle numeric-only input for phone number (Indian format)
   const handleNumericInput = (value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, '');
-    handleFilterChange('phoneNumber', numericValue);
+    // Allow + and digits, strip everything else
+    let cleanValue = value.replace(/[^0-9+]/g, '').trim();
+    
+    // Handle +91 or 91 prefix - strip it for storage
+    let storedValue = cleanValue;
+    
+    if (cleanValue.startsWith('+91')) {
+      storedValue = cleanValue.slice(3);
+    } else if (cleanValue.startsWith('91') && cleanValue.length > 10) {
+      storedValue = cleanValue.slice(2);
+    }
+    
+    // Only show validation errors when user has typed at least 10 characters
+    let isValid = true;
+    let message = '';
+    
+    if (storedValue.length >= 10) {
+      if (storedValue.length === 10) {
+        const firstDigit = parseInt(storedValue[0]);
+        if (firstDigit < 6 || firstDigit > 9) {
+          isValid = false;
+          message = 'Must start with 6, 7, 8, or 9';
+        }
+      } else {
+        isValid = false;
+        message = 'Enter exactly 10 digits';
+      }
+    }
+    
+    setPhoneValidation({ isValid, message });
+    // Store the normalized value (without prefix)
+    handleFilterChange('phoneNumber', storedValue);
   };
 
   // Clear all filters
@@ -367,19 +339,23 @@ export default function UsersPage() {
     setFilters({
       serialId: '',
       username: '',
-      phoneNumber: ''
+      phoneNumber: '',
+      deviceId: ''
     });
     setSearch('');
+    setPhoneValidation({ isValid: true, message: '' });
+    setDeviceIdValidation({ isValid: true, message: '' });
   };
 
   // Check if any filter is active
-  const hasActiveFilters = filters.serialId || filters.username || filters.phoneNumber || search;
+  const hasActiveFilters = filters.serialId || filters.username || filters.phoneNumber || filters.deviceId || search;
 
   const handleDeleteUser = () => {
     if (!selectedUser) return;
 
+    const displayName = selectedUser.fullName !== "—" ? selectedUser.fullName : selectedUser.recordId;
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedUser.fullName}?`
+      `Are you sure you want to delete ${displayName}?`
     );
 
     if (!confirmed) return;
@@ -428,8 +404,9 @@ export default function UsersPage() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value.slice(0, 100).trim())}
               placeholder="Search by username, phone number, or name..."
+              maxLength={100}
               className="w-full pl-14 pr-12 py-4 bg-transparent text-gray-900 
                        placeholder-gray-400 text-base
                        focus:outline-none focus:ring-0 border-0
@@ -471,7 +448,7 @@ export default function UsersPage() {
                 animate={{ scale: 1 }}
                 className="ml-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md"
               >
-                {filteredUsers.length} {filteredUsers.length === 1 ? 'result' : 'results'}
+                {users.length} {users.length === 1 ? 'result' : 'results'}
               </motion.span>
             )}
           </div>
@@ -520,8 +497,9 @@ export default function UsersPage() {
                 <input
                   type="text"
                   value={filters.serialId}
-                  onChange={(e) => handleFilterChange('serialId', e.target.value)}
+                  onChange={(e) => handleFilterChange('serialId', e.target.value.slice(0, 100))}
                   placeholder="Enter record ID..."
+                  maxLength={100}
                   className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm hover:shadow-md"
                 />
                 {filters.serialId && (
@@ -547,8 +525,9 @@ export default function UsersPage() {
                 <input
                   type="text"
                   value={filters.username}
-                  onChange={(e) => handleFilterChange('username', e.target.value)}
+                  onChange={(e) => handleUsernameInput(e.target.value)}
                   placeholder="Enter username..."
+                  maxLength={50}
                   className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm hover:shadow-md"
                 />
                 {filters.username && (
@@ -570,17 +549,23 @@ export default function UsersPage() {
                 </div>
                 Phone Number
               </label>
-              <div className="relative group">
+              <div className="relative group space-y-1">
                 <input
                   type="tel"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  inputMode="tel"
+                  pattern="[0-9+]*"
                   value={filters.phoneNumber}
                   onChange={(e) => handleNumericInput(e.target.value)}
-                  placeholder="Enter phone number..."
-                  className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all shadow-sm hover:shadow-md"
+                  placeholder="10-digit Indian mobile number"
+                  maxLength={13}
+                  className={`w-full bg-white border-2 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${
+                    !phoneValidation.isValid && filters.phoneNumber.length >= 10
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200 focus:ring-orange-500 focus:border-orange-500'
+                  }`}
                   onKeyPress={(e) => {
-                    if (!/[0-9]/.test(e.key) && e.key !== 'Enter' && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                    // Allow digits, +, and standard editing keys
+                    if (!/[0-9+]/.test(e.key) && e.key !== 'Enter' && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
                       e.preventDefault();
                     }
                   }}
@@ -590,16 +575,76 @@ export default function UsersPage() {
                     handleNumericInput(pastedText);
                   }}
                 />
-                {filters.phoneNumber && (
-                  <motion.button
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    onClick={() => handleFilterChange('phoneNumber', '')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
-                  >
-                    <X className="w-4 h-4" />
-                  </motion.button>
-                )}
+                <div className="flex justify-between items-center">
+                  {!phoneValidation.isValid && filters.phoneNumber.length >= 10 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-xs text-red-600 font-medium"
+                    >
+                      {phoneValidation.message}
+                    </motion.div>
+                  )}
+                  {filters.phoneNumber && (
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      onClick={() => {
+                        handleFilterChange('phoneNumber', '');
+                        setPhoneValidation({ isValid: true, message: '' });
+                      }}
+                      className="ml-auto p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </motion.button>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                <div className="p-1.5 bg-purple-100 rounded-lg">
+                  <Hash className="w-4 h-4 text-purple-600" />
+                </div>
+                Device ID
+              </label>
+              <div className="relative group space-y-1">
+                <input
+                  type="text"
+                  value={filters.deviceId}
+                  onChange={(e) => handleAlphanumericInput(e.target.value)}
+                  placeholder="4-digit device ID"
+                  maxLength={4}
+                  className={`w-full bg-white border-2 rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all shadow-sm hover:shadow-md ${
+                    !deviceIdValidation.isValid && filters.deviceId.length > 0
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                      : 'border-gray-200 focus:ring-orange-500 focus:border-orange-500'
+                  }`}
+                />
+                <div className="flex justify-between items-center">
+                  {!deviceIdValidation.isValid && filters.deviceId.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-xs text-red-600 font-medium"
+                    >
+                      {deviceIdValidation.message}
+                    </motion.div>
+                  )}
+                  {filters.deviceId && (
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      onClick={() => {
+                        handleFilterChange('deviceId', '');
+                        setDeviceIdValidation({ isValid: true, message: '' });
+                      }}
+                      className="ml-auto p-1 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </motion.button>
+                  )}
+                </div>
               </div>
             </div>
           </motion.div>
@@ -627,7 +672,7 @@ export default function UsersPage() {
             </div>
             <p className="text-white/90 text-sm font-medium mb-2">Current Page Users</p>
             <h2 className="text-4xl font-bold text-white mb-1">{currentUsers.length}</h2>
-            <p className="text-white/80 text-xs mt-2">Page {currentPage} of {totalPages} ({filteredUsers.length} total)</p>
+            <p className="text-white/80 text-xs mt-2">Page {currentPage} of {totalPages} ({totalUsers} total)</p>
           </div>
         </motion.div>
 
@@ -650,7 +695,7 @@ export default function UsersPage() {
             </div>
             <p className="text-white/90 text-sm font-medium mb-2">Latest Registration</p>
             <h2 className="text-xl font-bold text-white mb-1 truncate">
-              {users.length > 0 ? users[users.length - 1].fullName : '—'}
+              {users.length > 0 ? (users[users.length - 1].fullName !== "—" ? users[users.length - 1].fullName : users[users.length - 1].recordId) : '—'}
             </h2>
             <p className="text-white/80 text-xs mt-2">Most recent user</p>
           </div>
@@ -674,7 +719,7 @@ export default function UsersPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-white">Users List</h3>
-                  <p className="text-xs text-white/80 mt-0.5">Page {currentPage} of {totalPages} ({filteredUsers.length} total users)</p>
+                  <p className="text-xs text-white/80 mt-0.5">Page {currentPage} of {totalPages} ({totalUsers} total users)</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/20 backdrop-blur-sm rounded-lg">
@@ -691,7 +736,12 @@ export default function UsersPage() {
                 <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-amber-400 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
               </div>
               <p className="text-gray-700 font-medium text-lg">Fetching users from S3 bucket...</p>
-              <p className="text-sm text-gray-500 mt-2">Extracting user data from files and reports</p>
+              <p className="text-sm text-gray-500 mt-2">Loading page {currentPage} from S3</p>
+            </div>
+          ) : loadError ? (
+            <div className="p-16 text-center">
+              <p className="text-gray-700 font-medium text-lg">{loadError}</p>
+              <p className="text-sm text-gray-500 mt-2">Try refreshing the page or checking the API response.</p>
             </div>
           ) : (
             <>
@@ -732,11 +782,11 @@ export default function UsersPage() {
                       </td>
                       <td className="w-[25%] px-6 py-4 border-r border-gray-100">
                         <div className="flex items-center gap-3">
-                          <span className="font-semibold text-gray-900 break-all">{user.fullName}</span>
+                          <span className={`font-semibold break-all ${user.fullName === "—" ? 'text-gray-400 italic' : 'text-gray-900'}`}>{user.fullName}</span>
                         </div>
                       </td>
                       <td className="w-[15%] px-6 py-4 border-r border-gray-100">
-                        <span className="text-gray-700 font-medium block break-all">{user.phone || '—'}</span>
+                        <span className={`font-medium block break-all ${user.phone === "—" ? 'text-gray-400 italic' : 'text-gray-700'}`}>{user.phone}</span>
                       </td>
                       <td className="w-[15%] px-6 py-4">
                         <span className="text-gray-700 font-medium text-xs block break-all">
@@ -787,16 +837,16 @@ export default function UsersPage() {
               {totalPages > 1 && (
                 <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
                   <div className="text-sm text-gray-700">
-                    Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} users
+                    Showing {pageStartIndex} to {pageEndIndex} of {totalUsers} users
                   </div>
                   <div className="flex items-center gap-2">
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
+                      disabled={!pagination.hasPrev}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        currentPage === 1
+                        !pagination.hasPrev
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                           : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 hover:shadow-md'
                       }`}
@@ -805,7 +855,7 @@ export default function UsersPage() {
                     </motion.button>
                     
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      {visiblePageNumbers.map((page) => (
                         <motion.button
                           key={page}
                           whileHover={{ scale: 1.05 }}
@@ -826,9 +876,9 @@ export default function UsersPage() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
+                      disabled={!pagination.hasNext}
                       className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        currentPage === totalPages
+                        !pagination.hasNext
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                           : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 hover:shadow-md'
                       }`}
@@ -869,7 +919,7 @@ export default function UsersPage() {
                   <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 via-amber-500 to-orange-600 flex items-center justify-center border-4 border-white shadow-xl mb-3">
                     <UserIcon className="w-8 h-8 text-white" />
                   </div>
-                  <h4 className="font-bold text-gray-900 text-lg mb-1">{selectedUser.fullName}</h4>
+                  <h4 className="font-bold text-gray-900 text-lg mb-1">{selectedUser.fullName !== "—" ? selectedUser.fullName : selectedUser.recordId}</h4>
                   <p className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full font-medium">{selectedUser.username}</p>
                 </div>
 
@@ -884,11 +934,11 @@ export default function UsersPage() {
                   </div>
                   <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200 hover:shadow-md transition-all">
                     <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Full Name</p>
-                    <p className="text-sm font-bold text-gray-900 break-all">{selectedUser.fullName}</p>
+                    <p className={`text-sm font-bold break-all ${selectedUser.fullName === "—" ? 'text-gray-400 italic' : 'text-gray-900'}`}>{selectedUser.fullName}</p>
                   </div>
                   <div className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl border border-emerald-200 hover:shadow-md transition-all">
                     <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Phone Number</p>
-                    <p className="text-sm font-bold text-gray-900 break-all">{selectedUser.phone || '—'}</p>
+                    <p className={`text-sm font-bold break-all ${selectedUser.phone === "—" ? 'text-gray-400 italic' : 'text-gray-900'}`}>{selectedUser.phone}</p>
                   </div>
                   <div className="p-3 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200 hover:shadow-md transition-all">
                     <p className="text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Created At</p>

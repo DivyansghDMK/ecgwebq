@@ -19,11 +19,11 @@ export function CtaSection() {
           <div className="relative mx-auto max-w-3xl text-center">
             <p className="font-mono text-[0.72rem] uppercase tracking-[0.24em] text-[#FF8A3D]">Ready to deploy</p>
             <h2 className="mt-4 font-head text-3xl font-semibold leading-[1.1] md:text-5xl">
-              Bring ECG, CPAP, BiPAP and oxygen data into one place
+              Bring ECG and oxygen data into one place
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/70">
               The ECG module is production-ready, backend integration slots are open, and
-              the architecture already covers CPAP, BiPAP and oxygen telemetry.
+              the architecture already includes oxygen telemetry.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
               <a href="tel:+918700076769" className={btnPrimary}>

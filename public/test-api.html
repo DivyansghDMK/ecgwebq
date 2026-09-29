@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CardioX API Diagnostics - Extended</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 24px;
+      margin: 0;
+    }
+    h1 {
+      color: #f97316;
+      border-bottom: 2px solid #334155;
+      padding-bottom: 12px;
+      margin-top: 0;
+    }
+    h2 {
+      color: #38bdf8;
+      margin-top: 24px;
+    }
+    pre {
+      background-color: #1e293b;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid #334155;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    .status-ok {
+      background-color: #16a34a;
+      color: #f8fafc;
+    }
+    .status-error {
+      background-color: #dc2626;
+      color: #f8fafc;
+    }
+    button {
+      background-color: #f97316;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    button:hover {
+      background-color: #ea580c;
+    }
+  </style>
+</head>
+<body>
+  <h1>CardioX Doctor API Diagnostics (Extended Status Filters)</h1>
+  <p>This page queries the backend API with a wider range of possible status filters.</p>
+  
+  <button id="run-btn">Run Extended Diagnostics</button>
+  
+  <h2>API Query Results</h2>
+  <div id="results"></div>
+
+  <script>
+    document.getElementById('run-btn').addEventListener('click', async () => {
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = 'Running queries...';
+      
+      const token = localStorage.getItem('ecg_doctor_token');
+      if (!token) {
+        resultsDiv.innerHTML = '<div class="status-badge status-error">Error: No active doctor session token found in local storage.</div>';
+        return;
+      }
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      const baseUrl = 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/prod';
+      const statuses = [
+        'pending',
+        'reviewed',
+        'completed',
+        'approved',
+        'submitted',
+        'done',
+        'all'
+      ];
+      
+      resultsDiv.innerHTML = '';
+      
+      for (const status of statuses) {
+        const url = `${baseUrl}/api/doctor/reports?status=${status}`;
+        const itemDiv = document.createElement('div');
+        itemDiv.innerHTML = `<h3>Testing status: "${status}"</h3><p style="font-size:12px;color:#94a3b8;">${url}</p>`;
+        const pre = document.createElement('pre');
+        pre.textContent = 'Fetching...';
+        itemDiv.appendChild(pre);
+        resultsDiv.appendChild(itemDiv);
+        
+        try {
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: headers
+          });
+          
+          const isOk = response.ok;
+          const statusText = `HTTP ${response.status} ${response.statusText}`;
+          const badge = `<span class="status-badge ${isOk ? 'status-ok' : 'status-error'}">${statusText}</span>`;
+          
+          let data;
+          try {
+            data = await response.json();
+          } catch {
+            data = await response.text();
+          }
+          
+          itemDiv.querySelector('h3').innerHTML += ` - ${badge}`;
+          pre.textContent = JSON.stringify(data, null, 2);
+          
+        } catch (err) {
+          itemDiv.querySelector('h3').innerHTML += ` - <span class="status-badge status-error">Fetch Error</span>`;
+          pre.textContent = err.stack || err.message || err;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

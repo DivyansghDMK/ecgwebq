@@ -15,6 +15,10 @@ export interface ECGRecord {
     address?: string;
     medicalHistory?: string[];
     org?: string; // Organization
+    // Snake_case fallbacks for API compatibility
+    patient_name?: string;
+    patient_age?: number;
+    patient_gender?: 'M' | 'F' | 'O';
   };
   metrics: {
     heartRate: number;
@@ -35,6 +39,12 @@ export interface ECGRecord {
       minHR?: number;
       avgHR?: number;
     }; // Report overview with heart rate stats
+    // Healthcare Professional Review fields
+    natureOfEcg?: string;
+    natureStatus?: 'normal' | 'abnormal';
+    symptoms?: string | null;
+    classification?: string;
+    suggestedActions?: string | null;
   };
   timestamp: string;
   datetime?: {
@@ -42,6 +52,9 @@ export interface ECGRecord {
     time?: string;
   }; // Alternative timestamp field
   pdfBase64?: string;
+  // Snake_case fallbacks for API compatibility
+  report_id?: string;
+  id?: string;
 }
 
 export interface ECGUploadPayload {
@@ -106,6 +119,14 @@ export interface AndroidS3FilesResponse {
   data: {
     reports: S3File[];
     total_count: number;
+    pagination?: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
   };
 }
 
@@ -127,6 +148,12 @@ export interface S3File {
   report_type?: string;
   report_layout?: string;
   s3_key?: string;
+  // Patient data added by Lambda for JSON files
+  patient?: {
+    name?: string;
+    phone?: string;
+    id?: string;
+  };
 }
 
 export interface ECGReportMetadata {

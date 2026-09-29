@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { fetchS3Files, fetchAndroidS3Files, fetchAndroidS3FilesList, fetchAndroidS3FileUrl, fetchS3FileContent, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
+import { fetchS3Files, fetchAndroidS3FilesList, fetchAndroidS3FileUrl, fetchS3FileContent, formatFileSize, formatTimestamp, handleApiError } from '../api/ecgApi';
 import { S3File, S3FilesResponse, AndroidS3FilesResponse } from '../api/types/ecg';
 
 import { Download, Eye, Search, X, FileText, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
@@ -17,15 +17,15 @@ const S3FileBrowser: React.FC = () => {
   type SourceType = 'cardiox' | 'rhythm-ultra';
   const [activeSource, setActiveSource] = useState<SourceType>('cardiox');
   const [cardioxTotal, setCardioxTotal] = useState(0);
-  const [rhythmUltraFiles, setRhythmUltraFiles] = useState<S3File[]>([]);
-  const [rhythmUltraLoaded, setRhythmUltraLoaded] = useState(false);
 
   // Android pagination state (server-side)
   const [androidPagination, setAndroidPagination] = useState({
     page: 1,
     limit: 50,
     total: 0,
-    totalPages: 0
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
   });
 
   // Android file URL cache (5-minute TTL)
@@ -33,11 +33,11 @@ const S3FileBrowser: React.FC = () => {
 
   // Android reports state for Rhythm Ultra tab
   const [androidReports, setAndroidReports] = useState<S3File[]>([]);
-  const [androidReportsLoaded, setAndroidReportsLoaded] = useState(false);
+  const [androidReportsLoading, setAndroidReportsLoading] = useState(false);
   const [androidSearch, setAndroidSearch] = useState('');
-  const [androidTotalCount, setAndroidTotalCount] = useState(0);
   const [androidCurrentPage, setAndroidCurrentPage] = useState(1);
   const [androidPageSize, setAndroidPageSize] = useState(20);
+  const [androidRefreshTrigger, setAndroidRefreshTrigger] = useState(0);
 
   // Display state
   const [files, setFiles] = useState<S3File[]>([]);
@@ -87,27 +87,6 @@ const S3FileBrowser: React.FC = () => {
         setFiles(fetchedFiles);
         setCardioxTotal(total);
         setCurrentPage(page);
-      } else {
-        // Rhythm Ultra (Android): Use existing /android/s3-files endpoint with caching
-        // If cache is available and not bypassing, skip fetch
-        if (!bypassCache && androidReportsLoaded) {
-          return;
-        }
-
-        // Fetch all reports from the endpoint (returns all in one call)
-        const response: AndroidS3FilesResponse = await fetchAndroidS3FilesList(1, 1000, ''); // Reasonable limit
-
-        console.log('[S3FileBrowser] raw Android response:', response);
-
-        const reports: S3File[] = response?.data?.reports ?? [];
-        const totalCount = response?.data?.total_count ?? 0;
-
-        console.log('[S3FileBrowser] loaded Android reports count:', reports.length);
-        console.log('[S3FileBrowser] Android total_count:', totalCount);
-
-        setAndroidReports(reports);
-        setAndroidTotalCount(totalCount);
-        setAndroidReportsLoaded(true);
       }
     } catch (err) {
       console.error('[S3FileBrowser] fetch error:', err);
@@ -123,13 +102,61 @@ const S3FileBrowser: React.FC = () => {
 
   // Initial load
   useEffect(() => {
-    if (activeSource === 'rhythm-ultra') {
-      // For Rhythm Ultra, just trigger load to refresh cache if needed
-      loadFiles(1, search, pageSize);
-    } else {
+    if (activeSource === 'cardiox') {
       loadFiles(1, search, pageSize);
     }
-  }, [activeSource, pageSize, androidPageSize]);
+  }, [activeSource, pageSize]);
+
+  // Android/Rhythm Ultra reports fetch with debounced search
+  useEffect(() => {
+    if (activeSource !== 'rhythm-ultra') return;
+
+    const fetchAndroidReports = async () => {
+      setAndroidReportsLoading(true);
+      setError('');
+
+      try {
+        const response: AndroidS3FilesResponse = await fetchAndroidS3FilesList(
+          androidCurrentPage,
+          androidPageSize,
+          androidSearch
+        );
+
+        console.log('[S3FileBrowser] raw Android response:', response);
+
+        const reports: S3File[] = response?.data?.reports ?? [];
+        const pagination = response?.data?.pagination;
+
+        console.log('[S3FileBrowser] loaded Android reports count:', reports.length);
+        console.log('[S3FileBrowser] Android pagination:', pagination);
+
+        setAndroidReports(reports);
+        if (pagination) {
+          setAndroidPagination({
+            page: pagination.page,
+            limit: pagination.limit,
+            total: pagination.total,
+            totalPages: pagination.totalPages,
+            hasNext: pagination.hasNext,
+            hasPrev: pagination.hasPrev
+          });
+        }
+      } catch (err) {
+        console.error('[S3FileBrowser] Android fetch error:', err);
+        setError(handleApiError(err));
+        setAndroidReports([]);
+      } finally {
+        setAndroidReportsLoading(false);
+      }
+    };
+
+    // Debounce search
+    const debounceTimer = setTimeout(() => {
+      fetchAndroidReports();
+    }, 400);
+
+    return () => clearTimeout(debounceTimer);
+  }, [activeSource, androidCurrentPage, androidPageSize, androidSearch, androidRefreshTrigger]);
 
   // Handle source switch
   const handleSourceSwitch = (source: SourceType) => {
@@ -139,35 +166,40 @@ const S3FileBrowser: React.FC = () => {
     setCurrentPage(1);
     setAndroidCurrentPage(1);
     setError('');
-    // Clear Android cache when switching back to CardioX to avoid confusion
+    // Clear Android reports when switching back to CardioX
     if (source === 'cardiox') {
-      setRhythmUltraFiles([]);
-      setRhythmUltraLoaded(false);
       setAndroidReports([]);
-      setAndroidReportsLoaded(false);
-      setAndroidTotalCount(0);
+      setAndroidPagination({
+        page: 1,
+        limit: 50,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+      });
       setCardioxTotal(0);
     }
   };
 
-  // Handle refresh (bypass cache)
+  // Handle refresh
   const handleRefresh = () => {
-    // Clear cache for active source and reload
-    if (activeSource === 'cardiox') {
-      setCardioxTotal(0);
-    } else {
-      setAndroidReportsLoaded(false);
-      setAndroidTotalCount(0);
-    }
+  if (activeSource === 'cardiox') {
+    setCardioxTotal(0);
     loadFiles(1, search, pageSize, true);
-  };
+  } else {
+    // For Rhythm Ultra, reset to page 1 and force a refetch even if
+    // already on page 1 (setAndroidCurrentPage(1) alone won't trigger
+    // a re-render/refetch if the page is already 1)
+    setAndroidCurrentPage(1);
+    setAndroidRefreshTrigger((prev) => prev + 1);
+  }
+};
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (activeSource === 'rhythm-ultra') {
-      // Client-side search for Rhythm Ultra - no API call needed
-      // Reset to page 1 when searching
+      // Reset to page 1 when searching - the useEffect will handle the fetch
       setAndroidCurrentPage(1);
     } else {
       loadFiles(1, search, pageSize);
@@ -179,43 +211,9 @@ const S3FileBrowser: React.FC = () => {
     loadFiles(page, search, pageSize);
   };
 
-  // Calculate total files for display
-  const getTotalFiles = (): number => {
-    if (activeSource === 'rhythm-ultra') {
-      // Filter based on search
-      if (androidSearch) {
-        const query = androidSearch.toLowerCase();
-        return androidReports.filter(file =>
-        (file.mobile_number?.toLowerCase().includes(query) ||
-          file.patient_name?.toLowerCase().includes(query) ||
-          file.machine_serial?.toLowerCase().includes(query))
-        ).length;
-      }
-      return androidTotalCount > 0 ? androidTotalCount : androidReports.length;
-    }
-    return cardioxTotal > 0 ? cardioxTotal : files.length;
-  };
-
-  const totalFiles = getTotalFiles();
-  const totalPages = activeSource === 'rhythm-ultra'
-    ? Math.max(1, Math.ceil(totalFiles / androidPageSize))
-    : Math.max(1, Math.ceil(totalFiles / pageSize));
-
-  // Get filtered reports for Rhythm Ultra (for pagination)
-  const getFilteredAndroidReports = (): S3File[] => {
-    if (!androidSearch) return androidReports;
-    const query = androidSearch.toLowerCase();
-    return androidReports.filter(file =>
-      file.mobile_number?.toLowerCase().includes(query) ||
-      file.patient_name?.toLowerCase().includes(query) ||
-      file.machine_serial?.toLowerCase().includes(query)
-    );
-  };
-
-  const filteredAndroidReports = getFilteredAndroidReports();
-  const androidTotalPages = Math.max(1, Math.ceil(filteredAndroidReports.length / androidPageSize));
-  const androidStartIdx = (androidCurrentPage - 1) * androidPageSize;
-  const paginatedAndroidReports = filteredAndroidReports.slice(androidStartIdx, androidStartIdx + androidPageSize);
+  // Calculate total files for CardioX display
+  const totalFiles = cardioxTotal > 0 ? cardioxTotal : files.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiles / pageSize));
 
   // Handle file preview
   const handlePreview = async (file: S3File) => {
@@ -440,11 +438,12 @@ const S3FileBrowser: React.FC = () => {
                 onChange={(e) => {
                   if (activeSource === 'rhythm-ultra') {
                     setAndroidSearch(e.target.value);
+                    setAndroidCurrentPage(1);
                   } else {
                     setSearch(e.target.value);
                   }
                 }}
-                placeholder={activeSource === 'rhythm-ultra' ? "Search by mobile number, name, or device ID..." : "Search files by name..."}
+                placeholder={activeSource === 'rhythm-ultra' ? "Search by mobile number..." : "Search files by name..."}
                 className="w-full pl-10 pr-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-50 placeholder:text-slate-500 dark:placeholder:text-slate-400"
               />
             </div>
@@ -478,8 +477,8 @@ const S3FileBrowser: React.FC = () => {
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               {activeSource === 'rhythm-ultra'
-                ? (filteredAndroidReports.length > 0
-                  ? `Showing page ${androidCurrentPage} of ${androidTotalPages} with ${filteredAndroidReports.length} total reports`
+                ? (androidPagination.total > 0
+                  ? `Showing page ${androidPagination.page} of ${androidPagination.totalPages} with ${androidPagination.total} total reports`
                   : `Showing up to ${androidPageSize} reports per page`)
                 : totalFiles > 0
                   ? `Showing page ${currentPage} of ${totalPages} with ${totalFiles} total files`
@@ -534,13 +533,23 @@ const S3FileBrowser: React.FC = () => {
           <div className="flex flex-col justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
             <p className="text-slate-600 dark:text-slate-300 text-sm">
-              {activeSource === 'rhythm-ultra' ? 'Loading all reports...' : 'Loading files...'}
+              Loading files...
+            </p>
+          </div>
+        )}
+
+        {/* Android Loading State */}
+        {androidReportsLoading && (
+          <div className="flex flex-col justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
+              Loading reports...
             </p>
           </div>
         )}
 
         {/* Files Table */}
-        {!loading && ((activeSource === 'cardiox' && files?.length > 0) || (activeSource === 'rhythm-ultra' && androidReports?.length > 0)) && (
+        {!loading && !androidReportsLoading && ((activeSource === 'cardiox' && files?.length > 0) || (activeSource === 'rhythm-ultra' && androidReports?.length > 0)) && (
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
@@ -635,8 +644,8 @@ const S3FileBrowser: React.FC = () => {
                       </tr>
                     ))
                   ) : (
-                    // Use paginated reports for Rhythm Ultra
-                    paginatedAndroidReports.map((file) => (
+                    // Use androidReports directly - already paginated by server
+                    androidReports.map((file) => (
                       <tr key={file.key} className="hover:bg-gray-50 dark:hover:bg-slate-800/80">
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-slate-50">
                           {file.mobile_number || file.mobileNumber || '-'}
@@ -747,22 +756,22 @@ const S3FileBrowser: React.FC = () => {
               </div>
             )}
             {/* Pagination - Rhythm Ultra */}
-            {activeSource === 'rhythm-ultra' && androidTotalPages > 1 && (
+            {activeSource === 'rhythm-ultra' && androidPagination.totalPages > 1 && (
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-4 py-5 border-t border-slate-200 dark:from-slate-800 dark:to-slate-900 dark:border-slate-700 sm:px-6">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="shrink-0">
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                      Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((androidCurrentPage - 1) * androidPageSize) + 1}</span> to{' '}
+                      Showing <span className="font-bold text-slate-900 dark:text-slate-100">{((androidPagination.page - 1) * androidPagination.limit) + 1}</span> to{' '}
                       <span className="font-bold text-slate-900 dark:text-slate-100">
-                        {Math.min(androidCurrentPage * androidPageSize, filteredAndroidReports.length)}
+                        {Math.min(androidPagination.page * androidPagination.limit, androidPagination.total)}
                       </span>{' '}
-                      of <span className="font-bold text-slate-900 dark:text-slate-100">{filteredAndroidReports.length}</span> reports
+                      of <span className="font-bold text-slate-900 dark:text-slate-100">{androidPagination.total}</span> reports
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => setAndroidCurrentPage(androidCurrentPage - 1)}
-                      disabled={androidCurrentPage <= 1}
+                      onClick={() => setAndroidCurrentPage(Math.max(1, androidCurrentPage - 1))}
+                      disabled={!androidPagination.hasPrev}
                       className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -773,7 +782,7 @@ const S3FileBrowser: React.FC = () => {
 
                     {/* Page Numbers */}
                     <div className="flex flex-wrap items-center gap-1">
-                      {getVisiblePages().map((page, index, visiblePages) => (
+                      {getVisiblePages(androidPagination.page, androidPagination.totalPages).map((page, index, visiblePages) => (
                         <React.Fragment key={page}>
                           {index > 0 && page - visiblePages[index - 1] > 1 && (
                             <span className="px-2 py-2 text-sm font-medium text-slate-400">
@@ -782,7 +791,7 @@ const S3FileBrowser: React.FC = () => {
                           )}
                           <button
                             onClick={() => setAndroidCurrentPage(page)}
-                            className={`relative inline-flex min-w-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${page === androidCurrentPage
+                            className={`relative inline-flex min-w-10 items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${page === androidPagination.page
                                 ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105 border-0'
                                 : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-300 hover:shadow-md'
                               }`}
@@ -794,12 +803,12 @@ const S3FileBrowser: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => setAndroidCurrentPage(androidCurrentPage + 1)}
-                      disabled={androidCurrentPage >= androidTotalPages}
+                      onClick={() => setAndroidCurrentPage(Math.min(androidPagination.totalPages, androidCurrentPage + 1))}
+                      disabled={!androidPagination.hasNext}
                       className="relative inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-sm"
                     >
                       Next
-                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
@@ -811,7 +820,7 @@ const S3FileBrowser: React.FC = () => {
         )}
 
         {/* No Files State */}
-        {!loading && ((activeSource === 'cardiox' && files.length === 0) || (activeSource === 'rhythm-ultra' && androidReports.length === 0)) && !error && (
+        {!loading && !androidReportsLoading && ((activeSource === 'cardiox' && files.length === 0) || (activeSource === 'rhythm-ultra' && androidReports.length === 0)) && !error && (
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-12 text-center">
             <div className="text-gray-400 dark:text-gray-500 text-lg mb-2">
               {activeSource === 'rhythm-ultra' ? 'No reports found' : 'No files found'}

@@ -4,36 +4,62 @@ import { Pen, X, RotateCcw } from "lucide-react";
 
 interface SignatureCanvasProps {
   onSignatureChange: (dataUrl: string | null) => void;
-  width?: number;
-  height?: number;
+  className?: string;
 }
 
 export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
   onSignatureChange,
-  width = 300,
-  height = 120,
+  className = "",
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size
-    canvas.width = width;
-    canvas.height = height;
+    // Resize canvas to match container size
+    const resizeCanvas = () => {
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
 
-    // Set drawing style
-    ctx.strokeStyle = "#1e293b";
-    ctx.lineWidth = 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-  }, [width, height]);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      // Set drawing style
+      ctx.strokeStyle = "#1e293b";
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    };
+
+    // Initial resize after layout
+    const scheduleResize = () => {
+      requestAnimationFrame(() => {
+        resizeCanvas();
+      });
+    };
+
+    scheduleResize();
+
+    // Use ResizeObserver to handle container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleResize();
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -95,14 +121,22 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Reset transform to clear entire canvas
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
     setHasSignature(false);
     onSignatureChange(null);
   };
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative rounded-lg border-2 border-dashed border-slate-300 bg-white">
+      <div
+        ref={containerRef}
+        className={`relative rounded-lg border-2 border-dashed border-slate-300 bg-white ${className}`}
+      >
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -113,7 +147,7 @@ export const SignatureCanvas: React.FC<SignatureCanvasProps> = ({
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
           className="cursor-crosshair touch-none"
-          style={{ width: `${width}px`, height: `${height}px` }}
+          style={{ width: "100%", height: "100%" }}
         />
         {!hasSignature && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

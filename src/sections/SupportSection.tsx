@@ -7,7 +7,7 @@ const supportServices = [
       "Remote configuration across Windows and macOS, driver installation and automated build pipelines.",
     points: [
       "PyInstaller packaging with signed installers",
-      "Multi-device architecture planning (ECG + CPAP + BiPAP + Oxygen)"
+      "Multi-device architecture planning (ECG + Oxygen)"
     ]
   },
   {
