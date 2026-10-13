@@ -10,7 +10,6 @@ interface VersionCardProps {
   error: string | null;
   onEmpCodeChange: (value: string) => void;
   onVerifyCode: () => void;
-  onDownload: () => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
 }
 
@@ -22,7 +21,6 @@ export function VersionCard({
   error,
   onEmpCodeChange,
   onVerifyCode,
-  onDownload,
   onKeyPress,
 }: VersionCardProps) {
   const [isSuccess, setIsSuccess] = useState(false);
@@ -224,21 +222,16 @@ export function VersionCard({
               </motion.button>
             )}
 
-            {/* Download Button */}
+            {/* Builds are shown below the card once verified */}
             {isVerified && (
-              <motion.button
+              <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(34, 197, 94, 0.5)" }}
-                whileTap={{ scale: 0.98 }}
-                onClick={onDownload}
-                className="w-full py-4 px-6 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-2xl hover:from-green-600 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-sm shadow-lg"
+                className="flex items-center justify-center gap-2 py-3 text-sm font-medium text-green-300"
               >
-                <>
-                  <Download className="w-5 h-5" />
-                  Download Latest Version
-                </>
-              </motion.button>
+                <CheckCircle className="w-4 h-4" />
+                Access verified — choose a build below.
+              </motion.p>
             )}
           </div>
         </div>

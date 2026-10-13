@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { validateCompanyCode, getDownloadLink, CompanyDetailsResponse } from '@/services/versionApi';
+import { validateCompanyCode, CompanyDetailsResponse } from '@/services/versionApi';
 
 export interface VerificationState {
   isLoading: boolean;
@@ -54,11 +54,6 @@ export function useVersionVerification() {
     }
   };
 
-  const handleDownload = () => {
-    // Redirect to GitHub releases page
-    window.location.href = getDownloadLink();
-  };
-
   const resetVerification = () => {
     setVerification({
       isLoading: false,
@@ -71,7 +66,6 @@ export function useVersionVerification() {
   return {
     verification,
     verifyCode,
-    handleDownload,
     resetVerification,
   };
 }

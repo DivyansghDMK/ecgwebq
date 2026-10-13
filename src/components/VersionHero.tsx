@@ -1,12 +1,21 @@
 import { motion } from 'framer-motion';
-import { Download, Shield, Zap } from 'lucide-react';
+import { Download, Loader2, Shield, Zap } from 'lucide-react';
+import { describeLiveVersion } from '@/services/releases/liveVersion';
+import type { LatestState } from '@/services/releases/types';
 
-export function VersionHero() {
+interface VersionHeroProps {
+  stable: LatestState;
+  beta: LatestState;
+}
+
+export function VersionHero({ stable, beta }: VersionHeroProps) {
+  const liveVersion = describeLiveVersion(stable, beta);
+
   return (
     <section className="relative overflow-hidden">
       {/* Animated gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-purple-500/10 animate-pulse" />
-      
+
       {/* Subtle floating background effects */}
       <div className="absolute inset-0">
         <div className="absolute top-20 left-10 w-72 h-72 bg-orange-500/20 rounded-full blur-3xl animate-pulse" />
@@ -20,15 +29,20 @@ export function VersionHero() {
           transition={{ duration: 0.8 }}
           className="text-center max-w-4xl mx-auto"
         >
-          {/* Version Badge */}
+          {/* Version Badge (live from latest.json) */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-orange-500/30 bg-orange-500/10 backdrop-blur-sm"
+            role="status"
           >
-            <Zap className="w-4 h-4 text-orange-400" />
-            <span className="text-sm font-medium text-orange-300">Latest Version: v2.1.4</span>
+            {liveVersion.kind === 'loading' ? (
+              <Loader2 className="w-4 h-4 text-orange-400 animate-spin" aria-hidden="true" />
+            ) : (
+              <Zap className="w-4 h-4 text-orange-400" aria-hidden="true" />
+            )}
+            <span className="text-sm font-medium text-orange-300">{liveVersion.text}</span>
           </motion.div>
 
           {/* Main Title */}
@@ -70,14 +84,14 @@ export function VersionHero() {
               </div>
               <span className="text-sm">Secure Access</span>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-full bg-white/5 border border-white/10">
                 <Download className="w-5 h-5 text-orange-400" />
               </div>
               <span className="text-sm">Latest Release</span>
             </div>
-            
+
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-full bg-white/5 border border-white/10">
                 <Zap className="w-5 h-5 text-orange-400" />
