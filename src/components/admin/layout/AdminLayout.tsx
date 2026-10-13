@@ -51,6 +51,7 @@ export default function AdminLayout() {
     { path: "/artists/devices", label: "Devices", match: (path: string) => path.includes("devices") },
     { path: "/artists/support", label: "Support", match: (path: string) => path.includes("support") },
     { path: "/artists/licenses", label: "Licenses", match: (path: string) => path.includes("licenses") },
+    { path: "/artists/releases", label: "Releases", match: (path: string) => path.includes("releases") },
   ];
 
   const isActive = (matchFn: (path: string) => boolean) => matchFn(location.pathname);

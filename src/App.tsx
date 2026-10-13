@@ -37,6 +37,7 @@ import SupportComplaints from "@/components/admin/SupportComplaints";
 import VersionDownloadPage from "@/pages/VersionDownloadPage";
 import LicensesPage from "@/pages/Licenses";
 import DevicesPage from "@/components/admin/devices/DevicesPage";
+import ReleasesPage from "@/components/admin/releases/ReleasesPage";
 import UnderConstruction from "@/components/UnderConstruction";
 
 
@@ -101,6 +102,7 @@ export default function App() {
           <Route path="graphs" element={<Navigate to="/artists" replace />} />
           <Route path="support" element={<SupportComplaints />} />
           <Route path="licenses" element={<LicensesPage />} />
+          <Route path="releases" element={<ReleasesPage />} />
         </Route>
       </Route>
 
