@@ -51,6 +51,12 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (requestPath) => requestPath.replace(/^\/__license_api/, ""),
         },
+        "/releases-cdn": {
+          target: env.VITE_RELEASES_CDN_BASE || "https://dgz43izxcyy2a.cloudfront.net",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/releases-cdn/, ""),
+        },
       }
     }
   };
