@@ -98,6 +98,17 @@ describe("mock release API", () => {
     expect(pages[pages.length - 1].next_cursor).toBeNull();
   });
 
+  it("includes a rejected upload with null version and channel", async () => {
+    const { items } = await api.getUploads({ limit: 100, result: "REJECTED" });
+    const noManifest = items.find((u) => u.version === null);
+    expect(noManifest).toMatchObject({ channel: null, result: "REJECTED" });
+    expect(noManifest?.reasons.length).toBeGreaterThan(0);
+
+    // A channel filter excludes rows whose channel is unknown.
+    const beta = await api.getUploads({ limit: 100, result: "REJECTED", channel: "beta" });
+    expect(beta.items.some((u) => u.channel === null)).toBe(false);
+  });
+
   it("rejects an invalid cursor", async () => {
     await expect(api.getUploads({ cursor: "garbage" })).rejects.toMatchObject({ status: 400, code: "INVALID_CURSOR" });
   });
@@ -121,6 +132,42 @@ describe("HTTP release API", () => {
       method: "GET",
       headers: { Authorization: "Bearer test.jwt.token" },
     });
+  });
+
+  it("accepts a relative same-origin base like /release-api", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ success: true, data: { items: [], next_cursor: null } }));
+    const api = createHttpReleaseApi("/release-api/", { fetchImpl: fetchImpl as unknown as typeof fetch });
+
+    await api.getReleases();
+    await api.getUploads({ limit: 20, result: "REJECTED", channel: "beta" });
+
+    const urls = fetchImpl.mock.calls.map((call) => (call as unknown[])[0]);
+    expect(urls).toEqual(["/release-api/admin/releases", "/release-api/admin/uploads?limit=20&result=REJECTED&channel=beta"]);
+  });
+
+  it("keeps null version/channel from uploads rejected before the manifest was read", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({
+        success: true,
+        data: {
+          items: [{ at: "2026-10-01T00:00:00Z", result: "REJECTED", version: null, channel: null, source_key: "x.zip", reasons: ["no manifest"] }],
+          next_cursor: null,
+        },
+      })
+    );
+    const api = createHttpReleaseApi("/release-api", { fetchImpl: fetchImpl as unknown as typeof fetch });
+    const { items } = await api.getUploads({ limit: 20 });
+    expect(items[0]).toMatchObject({ version: null, channel: null, result: "REJECTED", reasons: ["no manifest"] });
+  });
+
+  it("maps 400 to an error with the API message", async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ success: false, error: { code: "BAD_REQUEST", message: "limit must be between 1 and 100" } }, 400)
+    );
+    const api = createHttpReleaseApi("/release-api", { fetchImpl: fetchImpl as unknown as typeof fetch });
+    const error = await api.getUploads({ limit: 500 }).catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 400, code: "BAD_REQUEST", message: "limit must be between 1 and 100" });
+    expect((error as ReleaseApiError).isAuthError).toBe(false);
   });
 
   it("sends result and channel only when set", async () => {

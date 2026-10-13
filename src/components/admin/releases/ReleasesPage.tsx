@@ -4,7 +4,7 @@ import { AlertCircle, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Load
 import { ReleaseChannelCard } from "@/components/releases/ReleaseChannelCard";
 import { useLatestRelease } from "@/hooks/useLatestRelease";
 import { clearAuthSession } from "@/lib/auth";
-import { formatDateIST, formatSizeMB } from "@/lib/format";
+import { formatDateIST, formatOptional, formatSizeMB } from "@/lib/format";
 import { getReleaseApi, isMockReleaseApi, ReleaseApiError } from "@/services/releases/releaseApi";
 import {
   canGoNext,
@@ -44,7 +44,10 @@ function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
-function ChannelBadge({ channel }: { channel: string }) {
+function ChannelBadge({ channel }: { channel: string | null }) {
+  if (!channel) {
+    return <span className="text-slate-400 dark:text-slate-500">—</span>;
+  }
   const beta = channel === "beta";
   return (
     <span
@@ -55,7 +58,7 @@ function ChannelBadge({ channel }: { channel: string }) {
       }`}
     >
       {beta && <FlaskConical className="h-3 w-3" aria-hidden="true" />}
-      {channel || "—"}
+      {channel}
     </span>
   );
 }
@@ -344,7 +347,7 @@ export default function ReleasesPage() {
                       <td className={`${td} whitespace-nowrap`}>{formatSizeMB(r.size_bytes)}</td>
                       <td className={td}>{r.mandatory ? "Yes" : "No"}</td>
                       <td className={td}>{r.min_supported_version || "None"}</td>
-                      <td className={`${td} font-mono text-xs`}>{r.installer_file || "—"}</td>
+                      <td className={`${td} font-mono text-xs`}>{formatOptional(r.installer_file)}</td>
                       <td className={`${td} font-mono text-xs`} title={r.sha256}>
                         {r.sha256 ? `${r.sha256.slice(0, 12)}…` : "—"}
                       </td>
@@ -427,11 +430,11 @@ export default function ReleasesPage() {
                             <td className={td}>
                               <ResultBadge result={u.result} />
                             </td>
-                            <td className={`${td} font-semibold text-slate-900 dark:text-slate-100`}>{u.version || "—"}</td>
+                            <td className={`${td} font-semibold text-slate-900 dark:text-slate-100`}>{formatOptional(u.version)}</td>
                             <td className={td}>
                               <ChannelBadge channel={u.channel} />
                             </td>
-                            <td className={`${td} break-all font-mono text-xs`}>{u.source_key || "—"}</td>
+                            <td className={`${td} break-all font-mono text-xs`}>{formatOptional(u.source_key)}</td>
                             <td className={td}>
                               {canExpand ? (
                                 <button

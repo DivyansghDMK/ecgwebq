@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { formatDateIST, formatSizeMB } from "../format";
+import { formatDateIST, formatOptional, formatSizeMB } from "../format";
+
+describe("formatOptional", () => {
+  it("shows a dash for null, undefined and blank values", () => {
+    expect(formatOptional(null)).toBe("—");
+    expect(formatOptional(undefined)).toBe("—");
+    expect(formatOptional("")).toBe("—");
+    expect(formatOptional("   ")).toBe("—");
+  });
+
+  it("returns real values unchanged", () => {
+    expect(formatOptional("1.2.5")).toBe("1.2.5");
+    expect(formatOptional("beta")).toBe("beta");
+  });
+});
 
 describe("formatSizeMB", () => {
   it("formats bytes as MB with one decimal", () => {

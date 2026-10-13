@@ -56,7 +56,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 const asString = (value: unknown): string => (typeof value === "string" ? value : "");
-const asNumber = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
+const asNullableString = (value: unknown): string | null => (typeof value === "string" && value !== "" ? value : null);
+const asNumber =(value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : 0);
 
 function toReleaseItem(raw: unknown): ReleaseHistoryItem {
   const item = isRecord(raw) ? raw : {};
@@ -79,8 +80,8 @@ function toUploadItem(raw: unknown): UploadHistoryItem {
   return {
     at: asString(item.at),
     result: asString(item.result),
-    version: asString(item.version),
-    channel: asString(item.channel),
+    version: asNullableString(item.version),
+    channel: asNullableString(item.channel),
     source_key: asString(item.source_key),
     reasons: Array.isArray(item.reasons) ? item.reasons.filter((r): r is string => typeof r === "string") : [],
   };
@@ -210,6 +211,15 @@ function buildMockUploads(): UploadHistoryItem[] {
     upload("2026-10-06T09:10:00Z", "ACCEPTED", "1.2.5", "beta"),
     upload("2026-10-01T12:00:00Z", "REJECTED", "1.2.5", "stable", [SHA_MISMATCH]),
     upload("2026-09-28T11:40:00Z", "REJECTED", "1.2.3", "beta", [SHA_MISMATCH]),
+    // Rejected before the manifest was read: the real API sends version and channel as null.
+    {
+      at: "2026-09-20T04:15:00Z",
+      result: "REJECTED",
+      version: null,
+      channel: null,
+      source_key: "incoming/CardioX-Setup.zip",
+      reasons: ["manifest.json not found in upload"],
+    },
     upload("2026-09-15T07:03:00Z", "ACCEPTED", "1.2.4", "beta"),
     upload("2026-09-02T08:20:00Z", "REJECTED", "0.9.1", "beta", [
       "version 0.9.1 already exists in releases/; versions are never re-used, build with a higher version",

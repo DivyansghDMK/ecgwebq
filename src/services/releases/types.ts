@@ -40,8 +40,10 @@ export type UploadResult = "ACCEPTED" | "REJECTED";
 export interface UploadHistoryItem {
   at: string;
   result: UploadResult | string;
-  version: string;
-  channel: string;
+  /** null when the upload was rejected before its manifest could be read. */
+  version: string | null;
+  /** null when the upload was rejected before its manifest could be read. */
+  channel: string | null;
   source_key: string;
   reasons: string[];
 }

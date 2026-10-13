@@ -5,6 +5,10 @@
       "destination": "https://dgz43izxcyy2a.cloudfront.net/:path*"
     },
     {
+      "source": "/release-api/:path*",
+      "destination": "https://u464ef0tk1.execute-api.us-east-1.amazonaws.com/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

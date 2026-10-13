@@ -1,5 +1,10 @@
 const BYTES_PER_MB = 1024 * 1024;
 
+/** Text for an optional value: "—" when null, undefined or blank. */
+export function formatOptional(value: string | null | undefined): string {
+  return value?.trim() ? value : "—";
+}
+
 /** Formats a byte count as megabytes with one decimal, e.g. 88342528 -> "84.2 MB". */
 export function formatSizeMB(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) {
