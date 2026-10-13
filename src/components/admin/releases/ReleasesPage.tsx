@@ -1,15 +1,28 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, ChevronDown, ChevronRight, FlaskConical, Loader2, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Loader2, RefreshCw } from "lucide-react";
 import { ReleaseChannelCard } from "@/components/releases/ReleaseChannelCard";
 import { useLatestRelease } from "@/hooks/useLatestRelease";
 import { clearAuthSession } from "@/lib/auth";
 import { formatDateIST, formatSizeMB } from "@/lib/format";
 import { getReleaseApi, isMockReleaseApi, ReleaseApiError } from "@/services/releases/releaseApi";
+import {
+  canGoNext,
+  canGoPrevious,
+  currentPage,
+  cursorForPage,
+  initialUploadPagination,
+  isPageCached,
+  uploadPaginationReducer,
+  visibleRange,
+} from "@/services/releases/uploadPagination";
 import type { ReleaseHistoryItem, UploadHistoryItem } from "@/services/releases/types";
 
 type ResultFilter = "all" | "ACCEPTED" | "REJECTED";
 type ChannelFilter = "all" | "stable" | "beta";
+
+const PAGE_SIZES = [20, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZES)[number];
 
 const sectionTitle = "text-xl font-semibold text-slate-900 dark:text-slate-50";
 const sectionHint = "text-sm text-slate-600 dark:text-slate-400";
@@ -19,13 +32,16 @@ const td = "px-4 py-3 text-sm text-slate-700 dark:text-slate-300 align-top";
 const selectClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 const secondaryBtn =
-  "inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
+  "inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
 
 const uploadKey = (u: UploadHistoryItem) => `${u.at}|${u.source_key}|${u.version}|${u.result}`;
-const byNewest = (a: UploadHistoryItem, b: UploadHistoryItem) => Date.parse(b.at) - Date.parse(a.at);
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong.";
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
 function ChannelBadge({ channel }: { channel: string }) {
@@ -86,6 +102,8 @@ function LoadingRow({ text }: { text: string }) {
 export default function ReleasesPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const locationRef = useRef(location);
+  locationRef.current = location;
   const api = useMemo(() => getReleaseApi(), []);
   const usingMock = isMockReleaseApi();
 
@@ -96,26 +114,32 @@ export default function ReleasesPage() {
   const [releasesLoading, setReleasesLoading] = useState(true);
   const [releasesError, setReleasesError] = useState<string | null>(null);
 
-  const [uploads, setUploads] = useState<UploadHistoryItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [uploadsLoading, setUploadsLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [uploadsError, setUploadsError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<PageSize>(20);
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [pagination, dispatch] = useReducer(uploadPaginationReducer, initialUploadPagination);
+  const [loadingPage, setLoadingPage] = useState<number | null>(0);
+  const [uploadsError, setUploadsError] = useState<{ message: string; pageIndex: number } | null>(null);
+  const [lockedHeight, setLockedHeight] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const requestIdRef = useRef(0);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+  const tableHeadRef = useRef<HTMLTableSectionElement>(null);
+  const scrollOnPageChangeRef = useRef(false);
 
   /** Returns true when the error was an auth failure and we redirected to login. */
   const redirectIfUnauthorized = useCallback(
     (error: unknown): boolean => {
       if (error instanceof ReleaseApiError && error.isAuthError) {
         clearAuthSession("admin");
-        navigate("/login_admin", { replace: true, state: { from: location } });
+        navigate("/login_admin", { replace: true, state: { from: locationRef.current } });
         return true;
       }
       return false;
     },
-    [navigate, location]
+    [navigate]
   );
 
   const loadReleases = useCallback(async () => {
@@ -133,46 +157,95 @@ export default function ReleasesPage() {
     }
   }, [api, redirectIfUnauthorized]);
 
-  const loadUploads = useCallback(
-    async (cursor: string | null) => {
-      if (cursor) {
-        setLoadingMore(true);
-      } else {
-        setUploadsLoading(true);
-      }
-      setUploadsError(null);
-      try {
-        const page = await api.getUploads({ cursor });
-        setUploads((previous) => {
-          const merged = cursor ? [...previous, ...page.items] : page.items;
-          return [...merged].sort(byNewest);
-        });
-        setNextCursor(page.next_cursor);
-      } catch (error) {
-        if (!redirectIfUnauthorized(error)) {
-          setUploadsError(errorMessage(error));
-        }
-      } finally {
-        setUploadsLoading(false);
-        setLoadingMore(false);
-      }
-    },
-    [api, redirectIfUnauthorized]
-  );
-
   useEffect(() => {
     void loadReleases();
-    void loadUploads(null);
-    // Load once on mount; retries are user-triggered.
-  }, []);
+  }, [loadReleases]);
 
-  const visibleUploads = useMemo(
-    () =>
-      uploads.filter(
-        (u) => (resultFilter === "all" || u.result === resultFilter) && (channelFilter === "all" || u.channel === channelFilter)
-      ),
-    [uploads, resultFilter, channelFilter]
+  /** Fetches one upload page with the current page size and filters; stale responses are ignored. */
+  const fetchUploadsPage = useCallback(
+    async (index: number, cursor: string | null) => {
+      const requestId = ++requestIdRef.current;
+      setLockedHeight(tableWrapRef.current?.offsetHeight ?? null);
+      setLoadingPage(index);
+      setUploadsError(null);
+      try {
+        const page = await api.getUploads({
+          limit: pageSize,
+          cursor,
+          result: resultFilter === "all" ? undefined : resultFilter,
+          channel: channelFilter === "all" ? undefined : channelFilter,
+        });
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        dispatch({ type: "pageLoaded", index, page });
+        dispatch({ type: "goTo", index });
+        setExpanded(new Set());
+      } catch (error) {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        scrollOnPageChangeRef.current = false;
+        if (!redirectIfUnauthorized(error)) {
+          setUploadsError({ message: errorMessage(error), pageIndex: index });
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoadingPage(null);
+          setLockedHeight(null);
+        }
+      }
+    },
+    [api, pageSize, resultFilter, channelFilter, redirectIfUnauthorized]
   );
+
+  // Page size, filters or Refresh: back to page 1 with an empty cache.
+  useEffect(() => {
+    dispatch({ type: "reset" });
+    setExpanded(new Set());
+    void fetchUploadsPage(0, null);
+  }, [fetchUploadsPage, reloadKey]);
+
+  // Bring the table header into view after the user changes page.
+  useEffect(() => {
+    if (scrollOnPageChangeRef.current) {
+      scrollOnPageChangeRef.current = false;
+      tableHeadRef.current?.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    }
+  }, [pagination.pageIndex]);
+
+  const isLoadingUploads = loadingPage !== null;
+  const page = currentPage(pagination);
+  const rows = page?.items ?? [];
+  const range = visibleRange(pagination);
+  const filtersActive = resultFilter !== "all" || channelFilter !== "all";
+
+  const goToPage = (index: number) => {
+    if (isLoadingUploads || index < 0) {
+      return;
+    }
+    scrollOnPageChangeRef.current = true;
+    if (isPageCached(pagination, index)) {
+      setUploadsError(null);
+      setExpanded(new Set());
+      dispatch({ type: "goTo", index });
+      return;
+    }
+    const cursor = cursorForPage(pagination, index);
+    if (cursor === undefined) {
+      scrollOnPageChangeRef.current = false;
+      return;
+    }
+    void fetchUploadsPage(index, cursor);
+  };
+
+  const retryUploads = () => {
+    if (!uploadsError) {
+      return;
+    }
+    const cursor = cursorForPage(pagination, uploadsError.pageIndex);
+    void fetchUploadsPage(uploadsError.pageIndex, cursor ?? null);
+  };
 
   const toggleReasons = (key: string) => {
     setExpanded((previous) => {
@@ -189,9 +262,8 @@ export default function ReleasesPage() {
   const refreshAll = () => {
     stable.retry();
     beta.retry();
-    setExpanded(new Set());
     void loadReleases();
-    void loadUploads(null);
+    setReloadKey((key) => key + 1);
   };
 
   return (
@@ -315,15 +387,18 @@ export default function ReleasesPage() {
         </div>
 
         <div className={panel}>
-          {uploadsLoading ? (
-            <LoadingRow text="Loading upload history…" />
-          ) : uploadsError && uploads.length === 0 ? (
-            <ErrorBox message={uploadsError} onRetry={() => void loadUploads(null)} />
+          {uploadsError && !page ? (
+            <ErrorBox message={uploadsError.message} onRetry={retryUploads} />
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div
+                ref={tableWrapRef}
+                className="relative overflow-x-auto"
+                style={isLoadingUploads && lockedHeight ? { minHeight: lockedHeight } : undefined}
+                aria-busy={isLoadingUploads}
+              >
                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
-                  <thead>
+                  <thead ref={tableHeadRef} className="scroll-mt-4">
                     <tr>
                       <th className={th}>Uploaded (IST)</th>
                       <th className={th}>Result</th>
@@ -333,15 +408,15 @@ export default function ReleasesPage() {
                       <th className={th}>Reasons</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {visibleUploads.length === 0 && (
+                  <tbody className={`divide-y divide-slate-100 transition-opacity dark:divide-slate-800 ${isLoadingUploads ? "opacity-40" : ""}`}>
+                    {rows.length === 0 && (
                       <tr>
-                        <td className={td} colSpan={6}>
-                          No uploads match these filters.
+                        <td className={`${td} h-40`} colSpan={6}>
+                          {isLoadingUploads ? "" : filtersActive ? "No uploads match these filters." : "No uploads yet."}
                         </td>
                       </tr>
                     )}
-                    {visibleUploads.map((u) => {
+                    {rows.map((u) => {
                       const key = uploadKey(u);
                       const isOpen = expanded.has(key);
                       const canExpand = u.result === "REJECTED" && u.reasons.length > 0;
@@ -363,6 +438,7 @@ export default function ReleasesPage() {
                                   type="button"
                                   onClick={() => toggleReasons(key)}
                                   aria-expanded={isOpen}
+                                  disabled={isLoadingUploads}
                                   className="inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
                                 >
                                   {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -391,24 +467,68 @@ export default function ReleasesPage() {
                     })}
                   </tbody>
                 </table>
+
+                {isLoadingUploads && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex items-start justify-center pt-10" role="status">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-700 shadow dark:bg-slate-800 dark:text-slate-200">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      Loading page {(loadingPage ?? 0) + 1}…
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                <span>
-                  Showing {visibleUploads.length} of {uploads.length} loaded
-                  {resultFilter !== "all" || channelFilter !== "all" ? " (filters apply to loaded rows)" : ""}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+                <span aria-live="polite" aria-atomic="true">
+                  Page {pagination.pageIndex + 1}
+                  {range ? ` · Showing ${range.from}–${range.to}` : ""}
                 </span>
+
                 {uploadsError && (
-                  <span className="text-red-600 dark:text-red-300" role="alert">
-                    {uploadsError}
+                  <span className="flex items-center gap-2 text-red-600 dark:text-red-300" role="alert">
+                    {uploadsError.message}
+                    <button type="button" onClick={retryUploads} className="font-semibold underline" aria-label="Retry loading this page">
+                      Retry
+                    </button>
                   </span>
                 )}
-                {nextCursor && (
-                  <button type="button" onClick={() => void loadUploads(nextCursor)} disabled={loadingMore} className={secondaryBtn}>
-                    {loadingMore && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                    Load more
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2">
+                    Rows per page
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value) as PageSize)}
+                      className={selectClass}
+                    >
+                      {PAGE_SIZES.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => goToPage(pagination.pageIndex - 1)}
+                    disabled={!canGoPrevious(pagination) || isLoadingUploads}
+                    aria-label="Previous page"
+                    className={secondaryBtn}
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    Previous
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => goToPage(pagination.pageIndex + 1)}
+                    disabled={!canGoNext(pagination) || isLoadingUploads}
+                    aria-label="Next page"
+                    className={secondaryBtn}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
             </>
           )}

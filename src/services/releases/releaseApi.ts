@@ -1,6 +1,6 @@
 import { buildAuthHeaders } from "@/lib/auth";
 import { getReleasesCdnBase } from "./latestJson";
-import type { ReleaseHistoryItem, UploadHistoryItem, UploadPage } from "./types";
+import type { Channel, ReleaseHistoryItem, UploadHistoryItem, UploadPage, UploadResult } from "./types";
 
 export const DEFAULT_UPLOADS_LIMIT = 50;
 
@@ -24,6 +24,10 @@ export class ReleaseApiError extends Error {
 export interface UploadsQuery {
   limit?: number;
   cursor?: string | null;
+  /** Omit for all results. */
+  result?: UploadResult;
+  /** Omit for all channels. */
+  channel?: Channel;
 }
 
 export interface ReleaseApiClient {
@@ -133,10 +137,16 @@ export function createHttpReleaseApi(baseUrl: string | undefined, options: HttpR
       return (data.items as unknown[]).map(toReleaseItem);
     },
 
-    async getUploads({ limit = DEFAULT_UPLOADS_LIMIT, cursor = null } = {}) {
+    async getUploads({ limit = DEFAULT_UPLOADS_LIMIT, cursor = null, result, channel } = {}) {
       const params = new URLSearchParams({ limit: String(limit) });
       if (cursor) {
         params.set("cursor", cursor);
+      }
+      if (result) {
+        params.set("result", result);
+      }
+      if (channel) {
+        params.set("channel", channel);
       }
       const data = await getData(`/admin/uploads?${params.toString()}`);
       return {
@@ -249,13 +259,15 @@ export function createMockReleaseApi({ delayMs = 350 }: { delayMs?: number } = {
       return releases.map((item) => ({ ...item }));
     },
 
-    async getUploads({ limit = DEFAULT_UPLOADS_LIMIT, cursor = null } = {}) {
+    async getUploads({ limit = DEFAULT_UPLOADS_LIMIT, cursor = null, result, channel } = {}) {
       await wait();
+      // Filter first, then page — the cursor is an offset into the filtered list.
+      const matching = uploads.filter((u) => (!result || u.result === result) && (!channel || u.channel === channel));
       const offset = cursor ? decodeCursor(cursor) : 0;
       const size = Math.min(Math.max(Math.trunc(limit), 1), 100);
-      const items = uploads.slice(offset, offset + size).map((item) => ({ ...item, reasons: [...item.reasons] }));
+      const items = matching.slice(offset, offset + size).map((item) => ({ ...item, reasons: [...item.reasons] }));
       const nextOffset = offset + size;
-      return { items, next_cursor: nextOffset < uploads.length ? encodeCursor(nextOffset) : null };
+      return { items, next_cursor: nextOffset < matching.length ? encodeCursor(nextOffset) : null };
     },
   };
 }

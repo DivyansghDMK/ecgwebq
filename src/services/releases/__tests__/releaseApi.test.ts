@@ -44,6 +44,60 @@ describe("mock release API", () => {
     expect(reasons).toContain("0.9.0 is lower than live 0.9.1 on the beta channel");
   });
 
+  async function fetchAll(query: Parameters<typeof api.getUploads>[0] = {}, limit = 20) {
+    const pages = [];
+    let cursor: string | null = null;
+    do {
+      const page = await api.getUploads({ ...query, limit, cursor });
+      pages.push(page);
+      cursor = page.next_cursor;
+    } while (cursor && pages.length < 50);
+    return pages;
+  }
+
+  it("filters by result on the server side", async () => {
+    const { items } = await api.getUploads({ limit: 100, result: "REJECTED" });
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((u) => u.result === "REJECTED")).toBe(true);
+  });
+
+  it("filters by channel on the server side", async () => {
+    const { items } = await api.getUploads({ limit: 100, channel: "stable" });
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((u) => u.channel === "stable")).toBe(true);
+  });
+
+  it("combines result and channel filters", async () => {
+    const all = (await api.getUploads({ limit: 100 })).items;
+    const expected = all.filter((u) => u.result === "ACCEPTED" && u.channel === "beta");
+    const { items } = await api.getUploads({ limit: 100, result: "ACCEPTED", channel: "beta" });
+    expect(items).toEqual(expected);
+
+    const none = await api.getUploads({ limit: 100, result: "ACCEPTED", channel: "stable" });
+    expect(none).toEqual({ items: [], next_cursor: null });
+  });
+
+  it.each([20, 50])("pages with limit %i until next_cursor is null", async (limit) => {
+    const total = (await api.getUploads({ limit: 100 })).items.length;
+    const pages = await fetchAll({}, limit);
+
+    expect(pages).toHaveLength(Math.ceil(total / limit));
+    pages.slice(0, -1).forEach((p) => {
+      expect(p.items).toHaveLength(limit);
+      expect(p.next_cursor).toEqual(expect.any(String));
+    });
+    const last = pages[pages.length - 1];
+    expect(last.items).toHaveLength(total - limit * (pages.length - 1));
+    expect(last.next_cursor).toBeNull();
+  });
+
+  it("pages within a filtered result set", async () => {
+    const expected = (await api.getUploads({ limit: 100, result: "REJECTED" })).items;
+    const pages = await fetchAll({ result: "REJECTED" }, 5);
+    expect(pages.flatMap((p) => p.items)).toEqual(expected);
+    expect(pages[pages.length - 1].next_cursor).toBeNull();
+  });
+
   it("rejects an invalid cursor", async () => {
     await expect(api.getUploads({ cursor: "garbage" })).rejects.toMatchObject({ status: 400, code: "INVALID_CURSOR" });
   });
@@ -67,6 +121,20 @@ describe("HTTP release API", () => {
       method: "GET",
       headers: { Authorization: "Bearer test.jwt.token" },
     });
+  });
+
+  it("sends result and channel only when set", async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ success: true, data: { items: [], next_cursor: null } }));
+    const api = createHttpReleaseApi("https://api.example.com", { fetchImpl: fetchImpl as unknown as typeof fetch });
+
+    await api.getUploads({ limit: 20, result: "REJECTED", channel: "beta" });
+    await api.getUploads({ limit: 20 });
+
+    const urls = fetchImpl.mock.calls.map((call) => (call as unknown[])[0]);
+    expect(urls).toEqual([
+      "https://api.example.com/admin/uploads?limit=20&result=REJECTED&channel=beta",
+      "https://api.example.com/admin/uploads?limit=20",
+    ]);
   });
 
   it("maps release items and ignores unknown fields", async () => {
