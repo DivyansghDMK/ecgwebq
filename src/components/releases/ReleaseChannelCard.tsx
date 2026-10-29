@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AlertCircle, Check, ChevronDown, Copy, Download, FlaskConical, Loader2, PackageOpen, RefreshCw, ShieldCheck } from "lucide-react";
 import { formatDateIST, formatSizeMB } from "@/lib/format";
 import type { Channel, LatestRelease, LatestState } from "@/services/releases/types";
@@ -12,6 +12,16 @@ interface ReleaseChannelCardProps {
   variant?: Variant;
   /** Show mandatory flag and minimum supported version (developer view). */
   showPolicy?: boolean;
+  /**
+   * Show release notes and "Verify download (SHA-256)" (admin only).
+   * When false they are not rendered at all — not hidden — so they never reach the DOM.
+   * Validation of sha256 etc. still happens in latestJson before any button is shown.
+   */
+  showDetails?: boolean;
+  /** Overrides the channel title, e.g. "CardioX for Windows" on the public page. */
+  title?: string;
+  /** Replaces the default "No release published yet" content (403/404). */
+  emptyState?: ReactNode;
 }
 
 const styles: Record<Variant, Record<string, string>> = {
@@ -51,7 +61,7 @@ const CHANNEL_TITLE: Record<Channel, string> = {
   beta: "Beta (testing)",
 };
 
-export function fileNameFromUrl(url: string): string {
+function fileNameFromUrl(url: string): string {
   try {
     const segments = new URL(url).pathname.split("/").filter(Boolean);
     return decodeURIComponent(segments[segments.length - 1] || "installer");
@@ -60,14 +70,23 @@ export function fileNameFromUrl(url: string): string {
   }
 }
 
-export function ReleaseChannelCard({ channel, state, onRetry, variant = "glass", showPolicy = false }: ReleaseChannelCardProps) {
+export function ReleaseChannelCard({
+  channel,
+  state,
+  onRetry,
+  variant = "glass",
+  showPolicy = false,
+  showDetails = false,
+  title,
+  emptyState,
+}: ReleaseChannelCardProps) {
   const s = styles[variant];
 
   return (
     <section className={s.card} aria-labelledby={`release-${channel}-title`} aria-busy={state.status === "loading"}>
       <header className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <h3 id={`release-${channel}-title`} className={s.title}>
-          {CHANNEL_TITLE[channel]}
+          {title ?? CHANNEL_TITLE[channel]}
         </h3>
         {channel === "beta" ? (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-600 dark:text-amber-300">
@@ -89,7 +108,9 @@ export function ReleaseChannelCard({ channel, state, onRetry, variant = "glass",
         </div>
       )}
 
-      {state.status === "none" && (
+      {state.status === "none" && emptyState}
+
+      {state.status === "none" && !emptyState && (
         <div className={`flex flex-col items-center gap-2 py-8 text-center ${s.muted}`}>
           <PackageOpen className="h-8 w-8 opacity-60" aria-hidden="true" />
           <p className={s.value}>No release published yet</p>
@@ -114,12 +135,21 @@ export function ReleaseChannelCard({ channel, state, onRetry, variant = "glass",
         </div>
       )}
 
-      {state.status === "ok" && <ReleaseDetails release={state.release} variant={variant} showPolicy={showPolicy} />}
+      {state.status === "ok" && (
+        <ReleaseDetails release={state.release} variant={variant} showPolicy={showPolicy} showDetails={showDetails} />
+      )}
     </section>
   );
 }
 
-function ReleaseDetails({ release, variant, showPolicy }: { release: LatestRelease; variant: Variant; showPolicy: boolean }) {
+interface ReleaseDetailsProps {
+  release: LatestRelease;
+  variant: Variant;
+  showPolicy: boolean;
+  showDetails: boolean;
+}
+
+function ReleaseDetails({ release, variant, showPolicy, showDetails }: ReleaseDetailsProps) {
   const s = styles[variant];
 
   return (
@@ -150,13 +180,15 @@ function ReleaseDetails({ release, variant, showPolicy }: { release: LatestRelea
         </dl>
       </div>
 
-      <div>
-        <p className={`mb-2 ${s.label}`}>Release notes</p>
-        {/* Rendered as text only; React escapes it and whitespace-pre-line keeps line breaks. */}
-        <p className={`max-h-48 overflow-y-auto whitespace-pre-line break-words ${s.notes}`}>
-          {release.release_notes.trim() || "No release notes."}
-        </p>
-      </div>
+      {showDetails && (
+        <div>
+          <p className={`mb-2 ${s.label}`}>Release notes</p>
+          {/* Rendered as text only; React escapes it and whitespace-pre-line keeps line breaks. */}
+          <p className={`max-h-48 overflow-y-auto whitespace-pre-line break-words ${s.notes}`}>
+            {release.release_notes.trim() || "No release notes."}
+          </p>
+        </div>
+      )}
 
       <a
         href={release.download_url}
@@ -171,12 +203,12 @@ function ReleaseDetails({ release, variant, showPolicy }: { release: LatestRelea
         Download for Windows
       </a>
 
-      <ChecksumPanel sha256={release.sha256} fileName={fileNameFromUrl(release.download_url)} variant={variant} />
+      {showDetails && <ChecksumPanel sha256={release.sha256} fileName={fileNameFromUrl(release.download_url)} variant={variant} />}
     </div>
   );
 }
 
-export function ChecksumPanel({ sha256, fileName, variant }: { sha256: string; fileName: string; variant: Variant }) {
+function ChecksumPanel({ sha256, fileName, variant }: { sha256: string; fileName: string; variant: Variant }) {
   const s = styles[variant];
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 

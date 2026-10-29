@@ -75,7 +75,7 @@ describe("DownloadsPage (public)", () => {
     expect(screen.queryByText(/beta/i)).toBeNull();
   });
 
-  it("shows version, IST date, size, notes and a safe download link for valid stable JSON", async () => {
+  it("shows version, IST date, size and a safe download link for valid stable JSON", async () => {
     stubFetch({ status: 200, body: stableJson });
     renderPage();
 
@@ -85,12 +85,23 @@ describe("DownloadsPage (public)", () => {
     expect(button.getAttribute("target")).toBeNull();
 
     expect(screen.getByRole("heading", { name: "CardioX for Windows" })).toBeTruthy();
-    expect(screen.getByText("2.0.0")).toBeTruthy();
+    expect(screen.getByText("v2.0.0")).toBeTruthy();
     expect(screen.getByText("20 Oct 2026, 10:30 IST")).toBeTruthy();
     expect(screen.getByText("171.0 MB")).toBeTruthy();
-    expect(screen.getByText(/First public release\./)).toBeTruthy();
-    expect(screen.getByText("Verify download (SHA-256)")).toBeTruthy();
-    expect(screen.getByText("b".repeat(64))).toBeTruthy();
+  });
+
+  it("puts no release notes or SHA-256 anywhere in the DOM", async () => {
+    stubFetch({ status: 200, body: stableJson });
+    const { container } = renderPage();
+    await screen.findByRole("link", { name: /download for windows/i });
+
+    const html = document.body.innerHTML;
+    expect(container.innerHTML).not.toContain(stableJson.sha256);
+    expect(html).not.toContain(stableJson.sha256);
+    expect(html).not.toContain("First public release");
+    expect(html).not.toContain("Supports RhythmUltra");
+    expect(html).not.toMatch(/release notes/i);
+    expect(html).not.toMatch(/SHA-256/i);
   });
 
   it("never shows a button for JSON that fails validation (wrong host)", async () => {

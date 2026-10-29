@@ -301,8 +301,8 @@ export default function ReleasesPage() {
           <p className={sectionHint}>What the CDN serves in releases/&lt;channel&gt;/latest.json right now.</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
-          <ReleaseChannelCard channel="stable" state={stable.state} onRetry={stable.retry} variant="admin" showPolicy />
-          <ReleaseChannelCard channel="beta" state={beta.state} onRetry={beta.retry} variant="admin" showPolicy />
+          <ReleaseChannelCard channel="stable" state={stable.state} onRetry={stable.retry} variant="admin" showPolicy showDetails />
+          <ReleaseChannelCard channel="beta" state={beta.state} onRetry={beta.retry} variant="admin" showPolicy showDetails />
         </div>
       </section>
 
