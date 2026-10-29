@@ -13,9 +13,6 @@ export interface CompanyDetailsRequest {
 const VERSION_API_BASE_URL = 'https://6jhix49qt6.execute-api.us-east-1.amazonaws.com';
 const VALIDATE_COMPANY_CODE_PATH = '/version/validate-company-code';
 
-// GitHub release link for software download
-const GITHUB_RELEASE_LINK = 'https://github.com/deckmount/cardiox-desktop/releases/latest';
-
 export async function validateCompanyCode(empCode: string): Promise<CompanyDetailsResponse> {
   try {
     const response = await fetch(`${VERSION_API_BASE_URL}${VALIDATE_COMPANY_CODE_PATH}`, {
@@ -85,8 +82,4 @@ export async function validateCompanyCode(empCode: string): Promise<CompanyDetai
       message: 'Something went wrong. Please try again'
     };
   }
-}
-
-export function getDownloadLink(): string {
-  return GITHUB_RELEASE_LINK;
 }

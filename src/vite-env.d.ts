@@ -18,6 +18,9 @@ interface ImportMetaEnv {
   readonly VITE_DOCTOR_VALIDATE_INVITE_PATH?: string;
   readonly VITE_DOCTOR_SET_PASSWORD_PATH?: string;
   readonly VITE_DOCTOR_UPLOAD_REVIEWED_PATH?: string;
+  readonly VITE_RELEASES_CDN_BASE?: string;
+  readonly VITE_RELEASE_API_BASE?: string;
+  readonly VITE_USE_MOCK_RELEASE_API?: string;
 }
 
 interface ImportMeta {

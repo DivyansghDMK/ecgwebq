@@ -51,6 +51,19 @@ export default defineConfig(({ mode }) => {
           secure: true,
           rewrite: (requestPath) => requestPath.replace(/^\/__license_api/, ""),
         },
+        "/releases-cdn": {
+          target: env.VITE_RELEASES_CDN_BASE || "https://dgz43izxcyy2a.cloudfront.net",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/releases-cdn/, ""),
+        },
+        // Release-history API (no CORS); request headers incl. Authorization are forwarded as-is.
+        "/release-api": {
+          target: "https://u464ef0tk1.execute-api.us-east-1.amazonaws.com",
+          changeOrigin: true,
+          secure: true,
+          rewrite: (requestPath) => requestPath.replace(/^\/release-api/, ""),
+        },
       }
     }
   };
