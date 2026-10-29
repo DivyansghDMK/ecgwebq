@@ -1,7 +1,10 @@
+import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 type FooterLink = {
   label: string;
   href?: string;
+  /** App route, rendered with react-router <Link>. */
+  to?: string;
 };
 
 const footerLinks: Array<{ heading: string; items: FooterLink[] }> = [
@@ -17,6 +20,7 @@ const footerLinks: Array<{ heading: string; items: FooterLink[] }> = [
   {
     heading: "Resources",
     items: [
+      { label: "Download", to: "/downloads" },
       { label: "Documentation Suite", href: "#support" },
       { label: "Architecture Blueprint", href: "#cta" },
       { label: "API Integration", href: "#support" },
@@ -63,7 +67,11 @@ export function Footer() {
               <ul className="space-y-2 text-sm text-white/70 break-words">
                 {column.items.map((item) => (
                   <li key={item.label} className="break-words">
-                    {item.href ? (
+                    {item.to ? (
+                      <Link to={item.to} className="transition hover:text-white break-words">
+                        {item.label}
+                      </Link>
+                    ) : item.href ? (
                       <a
                         href={item.href}
                         className="transition hover:text-white break-words"

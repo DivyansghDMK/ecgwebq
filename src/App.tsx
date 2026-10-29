@@ -35,6 +35,7 @@ import DoctorReportsPage from "@/components/doctor/DoctorReportsPage";
 import DoctorSetupPage from "@/components/doctor/DoctorSetupPage";
 import SupportComplaints from "@/components/admin/SupportComplaints";
 import VersionDownloadPage from "@/pages/VersionDownloadPage";
+import DownloadsPage from "@/pages/DownloadsPage";
 import LicensesPage from "@/pages/Licenses";
 import DevicesPage from "@/components/admin/devices/DevicesPage";
 import ReleasesPage from "@/components/admin/releases/ReleasesPage";
@@ -117,6 +118,9 @@ export default function App() {
       
       {/* Version download page */}
       <Route path="/version" element={<VersionDownloadPage />} />
+
+      {/* Public downloads page (stable channel only) */}
+      <Route path="/downloads" element={<DownloadsPage />} />
 
         {/* CPAP/BiPAP Routes - Under Construction */}
         <Route path="/cpap/login" element={<UnderConstruction />} />

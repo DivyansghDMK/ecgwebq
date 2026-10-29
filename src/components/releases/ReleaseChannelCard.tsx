@@ -51,7 +51,7 @@ const CHANNEL_TITLE: Record<Channel, string> = {
   beta: "Beta (testing)",
 };
 
-function fileNameFromUrl(url: string): string {
+export function fileNameFromUrl(url: string): string {
   try {
     const segments = new URL(url).pathname.split("/").filter(Boolean);
     return decodeURIComponent(segments[segments.length - 1] || "installer");
@@ -176,7 +176,7 @@ function ReleaseDetails({ release, variant, showPolicy }: { release: LatestRelea
   );
 }
 
-function ChecksumPanel({ sha256, fileName, variant }: { sha256: string; fileName: string; variant: Variant }) {
+export function ChecksumPanel({ sha256, fileName, variant }: { sha256: string; fileName: string; variant: Variant }) {
   const s = styles[variant];
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 

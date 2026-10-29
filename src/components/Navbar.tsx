@@ -1,16 +1,36 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Logo } from "./Logo";
 
-const navItems = [
+// `href` items are in-page hash links; `to` items are app routes (react-router <Link>).
+type NavItem = { label: string; href: string; to?: never } | { label: string; to: string; href?: never };
+
+const navItems: NavItem[] = [
   { href: "#overview", label: "Product" },
   { href: "#rhythm", label: "Rhythm system" },
   { href: "#gallery", label: "Screens" },
   { href: "#modes", label: "Display modes" },
   { href: "#analysis", label: "Analysis" },
   { href: "#device", label: "Device" },
-  { href: "#support", label: "Support" }
+  { href: "#support", label: "Support" },
+  { to: "/downloads", label: "Download" }
 ];
+
+function NavLink({ item, className, onClick }: { item: NavItem; className: string; onClick?: () => void }) {
+  if (item.to) {
+    return (
+      <Link to={item.to} className={className} onClick={onClick}>
+        {item.label}
+      </Link>
+    );
+  }
+  return (
+    <a href={item.href} className={className} onClick={onClick}>
+      {item.label}
+    </a>
+  );
+}
 
 const linkClass =
   "text-[0.8rem] font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:text-white focus-visible:underline";
@@ -27,9 +47,7 @@ export function Navbar() {
 
         <nav className="hidden flex-1 items-center gap-7 md:flex" aria-label="Sections">
           {navItems.map((item) => (
-            <a key={item.href} href={item.href} className={linkClass}>
-              {item.label}
-            </a>
+            <NavLink key={item.label} item={item} className={linkClass} />
           ))}
         </nav>
 
@@ -53,15 +71,13 @@ export function Navbar() {
       {isOpen && (
         <div className="border-t border-white/10 bg-ink md:hidden">
           <div className="mx-auto flex max-w-[84rem] flex-col px-5 pb-5 pt-2 sm:px-8">
-            {[...navItems, { href: "#login-section", label: "Log in" }].map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
+            {[...navItems, { href: "#login-section", label: "Log in" } as NavItem].map((item) => (
+              <NavLink
+                key={item.label}
+                item={item}
                 onClick={() => setIsOpen(false)}
                 className="border-b border-white/10 py-3.5 text-base font-medium text-white/85"
-              >
-                {item.label}
-              </a>
+              />
             ))}
           </div>
         </div>
