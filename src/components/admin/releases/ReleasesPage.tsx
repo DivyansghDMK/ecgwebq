@@ -108,7 +108,8 @@ export default function ReleasesPage() {
   const locationRef = useRef(location);
   locationRef.current = location;
   const api = useMemo(() => getReleaseApi(), []);
-  const usingMock = isMockReleaseApi();
+  // PROD inlined so production builds drop the banner as well.
+  const usingMock = !import.meta.env.PROD && isMockReleaseApi();
 
   const stable = useLatestRelease("stable");
   const beta = useLatestRelease("beta");
@@ -287,8 +288,8 @@ export default function ReleasesPage() {
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
           role="note"
         >
-          Release and upload history below is <strong>mock data</strong>. Set <code>VITE_USE_MOCK_RELEASE_API=false</code> and{" "}
-          <code>VITE_RELEASE_API_BASE</code> to use the real API. &quot;Live now&quot; always reads the CDN.
+          Release and upload history below is <strong>mock data</strong> (local development only). Remove{" "}
+          <code>VITE_USE_MOCK_RELEASE_API=true</code> to use the real API. &quot;Live now&quot; always reads the CDN.
         </div>
       )}
 

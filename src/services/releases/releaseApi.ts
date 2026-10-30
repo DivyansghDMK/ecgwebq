@@ -35,13 +35,21 @@ export interface ReleaseApiClient {
   getUploads(query?: UploadsQuery): Promise<UploadPage>;
 }
 
-/** Mock is on unless VITE_USE_MOCK_RELEASE_API is exactly "false". */
+/**
+ * The real API is the default. The mock is used only for local development when
+ * VITE_USE_MOCK_RELEASE_API is exactly "true" — never in a production build.
+ */
 export function isMockReleaseApi(): boolean {
-  return import.meta.env.VITE_USE_MOCK_RELEASE_API?.trim().toLowerCase() !== "false";
+  if (import.meta.env.PROD) {
+    return false;
+  }
+  return import.meta.env.VITE_USE_MOCK_RELEASE_API === "true";
 }
 
 export function getReleaseApi(): ReleaseApiClient {
-  if (isMockReleaseApi()) {
+  // `!import.meta.env.PROD` is inlined here (not only via isMockReleaseApi) so production
+  // builds can drop the mock client and its data entirely.
+  if (!import.meta.env.PROD && isMockReleaseApi()) {
     return createMockReleaseApi();
   }
   return createHttpReleaseApi(import.meta.env.VITE_RELEASE_API_BASE);
@@ -193,24 +201,29 @@ function mockRelease(version: string, published_at: string, size_bytes: number, 
   };
 }
 
-const MOCK_RELEASES: ReleaseHistoryItem[] = [
-  mockRelease("1.2.5", "2026-10-06T09:12:00Z", 91_750_400, "Fixes report export on Windows 11.\nFaster startup.", 125),
-  mockRelease("1.2.4", "2026-09-15T07:05:00Z", 91_226_112, "Lead II rhythm view improvements.", 124),
-  mockRelease("1.2.2", "2026-08-04T10:30:00Z", 90_701_824, "", 122),
-  mockRelease("0.9.1", "2026-06-10T06:00:00Z", 84_934_656, "First beta for internal testing.", 91),
-];
+// Built lazily (not at module load) so production builds can drop all mock data.
+function buildMockReleases(): ReleaseHistoryItem[] {
+  return [
+    mockRelease("1.2.5", "2026-10-06T09:12:00Z", 91_750_400, "Fixes report export on Windows 11.\nFaster startup.", 125),
+    mockRelease("1.2.4", "2026-09-15T07:05:00Z", 91_226_112, "Lead II rhythm view improvements.", 124),
+    mockRelease("1.2.2", "2026-08-04T10:30:00Z", 90_701_824, "", 122),
+    mockRelease("0.9.1", "2026-06-10T06:00:00Z", 84_934_656, "First beta for internal testing.", 91),
+  ];
+}
 
-const SHA_MISMATCH = `installer SHA-256 mismatch: manifest ${fakeSha(1).slice(0, 12)}…, actual ${fakeSha(2).slice(0, 12)}…`;
+const shaMismatchReason = () =>
+  `installer SHA-256 mismatch: manifest ${fakeSha(1).slice(0, 12)}…, actual ${fakeSha(2).slice(0, 12)}…`;
 
 function upload(at: string, result: "ACCEPTED" | "REJECTED", version: string, channel: string, reasons: string[] = []): UploadHistoryItem {
   return { at, result, version, channel, source_key: `incoming/${channel}/${installerFile(version)}`, reasons };
 }
 
 function buildMockUploads(): UploadHistoryItem[] {
+  const shaMismatch = shaMismatchReason();
   const rows: UploadHistoryItem[] = [
     upload("2026-10-06T09:10:00Z", "ACCEPTED", "1.2.5", "beta"),
-    upload("2026-10-01T12:00:00Z", "REJECTED", "1.2.5", "stable", [SHA_MISMATCH]),
-    upload("2026-09-28T11:40:00Z", "REJECTED", "1.2.3", "beta", [SHA_MISMATCH]),
+    upload("2026-10-01T12:00:00Z", "REJECTED", "1.2.5", "stable", [shaMismatch]),
+    upload("2026-09-28T11:40:00Z", "REJECTED", "1.2.3", "beta", [shaMismatch]),
     // Rejected before the manifest was read: the real API sends version and channel as null.
     {
       at: "2026-09-20T04:15:00Z",
@@ -236,7 +249,7 @@ function buildMockUploads(): UploadHistoryItem[] {
   for (let i = 0; i < 54; i += 1) {
     const at = new Date(start - i * 12 * 60 * 60 * 1000).toISOString();
     const version = `0.8.${53 - i}`;
-    rows.push(i % 4 === 1 ? upload(at, "REJECTED", version, "beta", [SHA_MISMATCH]) : upload(at, "ACCEPTED", version, "beta"));
+    rows.push(i % 4 === 1 ? upload(at, "REJECTED", version, "beta", [shaMismatch]) : upload(at, "ACCEPTED", version, "beta"));
   }
 
   return rows.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
@@ -260,7 +273,7 @@ function decodeCursor(cursor: string): number {
 
 export function createMockReleaseApi({ delayMs = 350 }: { delayMs?: number } = {}): ReleaseApiClient {
   const uploads = buildMockUploads();
-  const releases = [...MOCK_RELEASES].sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+  const releases = buildMockReleases().sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
   const wait = () => (delayMs > 0 ? new Promise<void>((resolve) => setTimeout(resolve, delayMs)) : Promise.resolve());
 
   return {
