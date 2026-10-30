@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createHttpReleaseApi,
   createMockReleaseApi,
+  getReleaseApi,
   isMockReleaseApi,
   ReleaseApiError,
 } from "../releaseApi";
@@ -213,20 +214,54 @@ describe("HTTP release API", () => {
   });
 });
 
-describe("isMockReleaseApi", () => {
+describe("isMockReleaseApi / getReleaseApi", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
-  it("defaults to mock", () => {
-    vi.stubEnv("VITE_USE_MOCK_RELEASE_API", "");
-    expect(isMockReleaseApi()).toBe(true);
-  });
-
-  it("is off only for 'false'", () => {
-    vi.stubEnv("VITE_USE_MOCK_RELEASE_API", "false");
+  it("missing variable -> real API", () => {
+    vi.stubEnv("VITE_USE_MOCK_RELEASE_API", undefined);
     expect(isMockReleaseApi()).toBe(false);
+  });
+
+  it.each(["false", "", "TRUE", "True", " true", "1", "yes"])("%j -> real API", (value) => {
+    vi.stubEnv("VITE_USE_MOCK_RELEASE_API", value);
+    expect(isMockReleaseApi()).toBe(false);
+  });
+
+  it('"true" in dev -> mock', async () => {
+    vi.stubEnv("PROD", false);
     vi.stubEnv("VITE_USE_MOCK_RELEASE_API", "true");
     expect(isMockReleaseApi()).toBe(true);
+
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const releases = await getReleaseApi().getReleases();
+    expect(releases.map((r) => r.version)).toEqual(["1.2.5", "1.2.4", "1.2.2", "0.9.1"]);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('"true" in a production build -> real API', async () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_USE_MOCK_RELEASE_API", "true");
+    vi.stubEnv("VITE_RELEASE_API_BASE", "/release-api");
+    expect(isMockReleaseApi()).toBe(false);
+
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ success: true, data: { items: [] } }), { status: 200 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(getReleaseApi().getReleases()).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledWith("/release-api/admin/releases", expect.anything());
+  });
+
+  it("mock off and no base URL -> 'not configured' error, no mock fallback", async () => {
+    vi.stubEnv("VITE_USE_MOCK_RELEASE_API", undefined);
+    vi.stubEnv("VITE_RELEASE_API_BASE", undefined);
+    await expect(getReleaseApi().getReleases()).rejects.toMatchObject({
+      code: "CONFIG",
+      message: "Release API is not configured (VITE_RELEASE_API_BASE).",
+    });
   });
 });
