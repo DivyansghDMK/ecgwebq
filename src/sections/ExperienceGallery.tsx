@@ -13,7 +13,7 @@ const galleryItems: ScreenItem[] = [
     title: "Sign in",
     kicker: "Access",
     description:
-      "Sign in with your phone number or full name and the password you chose at signup. Sign-in works offline; connect to the internet at least once a week.",
+      "Sign in with your registered phone number and the password you chose at sign-up. Sign-in works offline; connect to the internet at least once a week.",
     image: loginImage
   },
   {

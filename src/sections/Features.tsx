@@ -1,34 +1,34 @@
-import { Activity, BrainCircuit, Smartphone, Stethoscope } from "lucide-react";
+import { Activity, BookOpenCheck, Smartphone, Stethoscope } from "lucide-react";
 import { Reveal, Section, SectionHead } from "./ui";
 
 const featureData = [
   {
-    icon: BrainCircuit,
-    title: "AI rhythm intelligence",
+    icon: BookOpenCheck,
+    title: "Interpretation by the rules",
     description:
-      "Deckmount's neural engine interprets live PQRS patterns, highlights anomalies instantly, and learns from every clinical review.",
-    tag: "Synced with CardioX Cloud"
+      "Every finding follows published ECG criteria, with thresholds confirmed by our consulting cardiologist. A finding prints only when all of its criteria are met on the recording.",
+    tag: "Tested on 113,395 labelled ECGs"
   },
   {
     icon: Activity,
     title: "12-lead precision",
     description:
-      "Visualize every lead with ultra-low latency. Fine-tuned scaling ensures accurate waveform morphology for cardiology diagnostics.",
-    tag: "FDA-ready pipeline"
+      "See every lead live in 12:1, 6:2 or 4:3 layouts at calibrated 25 mm/s and 10 mm/mV, so waveform morphology reads true.",
+    tag: "Fluke simulator tested"
   },
   {
     icon: Smartphone,
     title: "Access anywhere",
     description:
-      "Use CardioX across desktop dashboards, tablet command centers, and mobile companion apps with a single login.",
-    tag: "Secure clinical mobility"
+      "Record on the Rhythm Ultra Android app or straight into the desktop over USB, then review the same report on the desktop or the web review page.",
+    tag: "Desktop · Android · Web"
   },
   {
     icon: Stethoscope,
     title: "Clinical workflow control",
     description:
-      "Configure filters, acquisition modes, and reporting templates from a single control panel built for high-volume cardiac labs.",
-    tag: "Deckmount certified"
+      "Set filters, layouts and report details from one control panel. A filter you choose applies to every screen and every printed report.",
+    tag: "Same filters everywhere"
   }
 ];
 

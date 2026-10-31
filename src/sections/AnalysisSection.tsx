@@ -10,23 +10,23 @@ const analysisMetrics = [
 ];
 
 const interpretation = [
-  "AI-driven anomaly detection and trend tagging",
-  "Layered annotations for multi-specialist collaboration",
-  "Export structured insights via JSON or HL7-compatible payloads"
+  "Each finding shown with the measurement behind it",
+  "Manual annotation, ruler and caliper on every lead",
+  "Export as PDF and JSON, or send as HL7"
 ];
 
 const blocks = [
   {
     title: "Automated arrhythmia screening",
-    body: "Continuously analyzes live ECG to flag atrial fibrillation, ventricular tachycardia, premature ventricular contractions, sinus bradycardia and sinus tachycardia, and confirms normal sinus rhythm when appropriate."
+    body: "Reads atrial fibrillation and flutter, ventricular tachycardia, AV blocks, bundle branch blocks, premature beats, sinus bradycardia and tachycardia, and names sinus rhythm only when P waves lead every QRS."
   },
   {
-    title: "Dynamic clinical conclusions",
-    body: "Builds a live Findings & Recommendations summary from current ECG metrics and stores each narrative with a time stamp, so clinicians get plain-language notes to review or share."
+    title: "Clear clinical conclusions",
+    body: "The report is decided by the strip it prints. Findings use standard cardiograph wording, and an interval that could not be measured reads \"--\", never a guessed number."
   },
   {
-    title: "Continual model training",
-    body: "Annotated ECG waveforms feed convolutional and transformer-based models. Each confirmed diagnosis becomes a labeled frame, and updated models are pushed to the device for on-site detection."
+    title: "Limits for every age",
+    body: "Children from 1 to 17 years are read against normal heart rate, axis and PR limits for their age band, approved by our consulting cardiologist and checked on 2,156 labelled children's ECGs."
   }
 ];
 
@@ -36,7 +36,7 @@ export function AnalysisSection() {
       <SectionHead
         eyebrow="Live PQRS analysis"
         title="Waveform intelligence for every lead"
-        lede="High-fidelity rendering with zoom, amplitude scaling and AI-generated interpretations. Clinicians can spot trends and arrhythmias and annotate rhythms as they happen."
+        lede="High-fidelity rendering with zoom, amplitude scaling and automatic interpretation. Clinicians can spot arrhythmias, measure by hand and annotate rhythms as they happen."
       />
 
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr] lg:gap-10">
@@ -47,8 +47,8 @@ export function AnalysisSection() {
             <span>Amplification · auto smoothing · crash recovery</span>
           </div>
           <p className="border-l-4 border-brand-orange bg-white/60 px-5 py-4 text-lg font-medium leading-snug text-ink">
-            Records patient signals continuously for 24 hours and produces focused analytics
-            for the last <span className="text-[#B93A00]">2 hours</span>.
+            Analyses <span className="text-[#B93A00]">10 seconds</span> of all 12 leads and prints
+            the report from that same strip.
           </p>
         </Reveal>
 
@@ -59,10 +59,10 @@ export function AnalysisSection() {
             ))}
           </div>
           <div className="rounded-2xl bg-ink p-6 text-white">
-            <p className="font-head text-6xl font-semibold leading-none text-[#FF8A3D]">80+</p>
+            <p className="font-head text-6xl font-semibold leading-none text-[#FF8A3D]">42</p>
             <p className="mt-3 text-sm leading-relaxed text-white/75">
-              diagnostic ECG patterns recognized, including ischemia, arrhythmias, conduction
-              blocks and HRV trends.
+              findings on our consulting cardiologist's list, including arrhythmias, conduction
+              blocks, chamber enlargement, ST and T changes.
             </p>
           </div>
           <div>
@@ -70,8 +70,8 @@ export function AnalysisSection() {
               Automated interpretation, clinician in control
             </h3>
             <p className="mt-3 text-[0.95rem] leading-relaxed text-[#4A3F42]">
-              Local and cloud engines interpret rhythms while cardiologists keep manual
-              overrides and annotations.
+              The app interprets on the PC, offline. Cardiologists review, measure and
+              annotate before the report is final.
             </p>
             <ul className="mt-2 divide-y divide-ink/15">
               {interpretation.map((i) => (

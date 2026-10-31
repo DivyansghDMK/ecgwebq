@@ -22,7 +22,7 @@ const reports = ["100937", "100930", "100911"].map((stamp) => ({
 
 const points = [
   "Calendar for scheduled ECG reviews and stress tests",
-  "AI-generated conclusions with clinician override",
+  "Automatic conclusions with the evidence behind each finding",
   "Recent reports and collaborative comments one click away"
 ];
 

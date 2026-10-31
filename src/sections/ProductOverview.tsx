@@ -10,22 +10,22 @@ const productPillars = [
   },
   {
     title: "Deployment ready",
-    subtitle: "Windows & macOS builds",
+    subtitle: "Windows installer, automatic updates",
     description:
-      "Install on Windows or macOS with a signed installer. Reports are saved on the device first and sync once a connection is available, so clinics with unreliable internet keep working."
+      "One Windows installer that updates itself. Runs smoothly on older Core i3 PCs. Reports are saved on the PC first and sync once a connection is available, so clinics with unreliable internet keep working."
   },
   {
     title: "Secure by design",
-    subtitle: "Cloud + local resilience",
+    subtitle: "Licensed, encrypted, compiled",
     description:
-      "Redundant storage keeps reports safe, with automated sync to CardioX Cloud and encrypted handoff for API integrations."
+      "Each PC carries a licence signed on our server and checked by the app. Logs are encrypted on the PC, the app is a compiled build, and the cloud keys it carries can only upload reports."
   }
 ];
 
 const capabilityHighlights = [
   "Live ECG waveform rendering with hospital-grade filtering",
-  "Auto-calculated PR, QRS, QT/QTc, ST, and trajectory metrics",
-  "Combined PDF + JSON report generation in one click",
+  "Auto-calculated HR, PR, QRS, QT/QTc, axis and ST in every lead",
+  "12-lead, HRV and hyperkalaemia reports as PDF + JSON in one click",
   "Adaptive noise reduction for high-motion capture environments",
   "Send finished reports to the storage your team already uses, from S3 and Azure to FTP and Dropbox",
   "Offline-first workflows with smart duplicate capture prevention"

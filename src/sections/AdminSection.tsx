@@ -20,7 +20,7 @@ const deviceFeatures = [
       "Clinical-grade filtering stack keeps every waveform pristine in high-noise environments.",
     bullets: [
       "ECG / EMG adaptive filters with anti-drift baseline removal",
-      "Configurable cut-offs for artifact suppression (10–20 Hz window)",
+      "Selectable cut-offs: 0.05 / 0.5 Hz baseline, 25 / 35 / 40 / 150 Hz low-pass",
       "Common-mode rejection ratio greater than 120 dB"
     ]
   },
@@ -71,7 +71,7 @@ const deviceFeatures = [
     bullets: [
       "7\" LCD display for waveform preview and status indicators",
       "Single charge delivers up to 2 hours or 200 ECG recordings",
-      "AI-assisted algorithms deliver live interpretations"
+      "Rule-based algorithms deliver live interpretations"
     ]
   }
 ];

@@ -7,9 +7,9 @@ const groups = [
   {
     title: "Precision controls",
     items: [
-      "Switch between 12:1 and 6:2 lead layouts instantly",
+      "Switch between 12:1, 6:2 and 4:3 lead layouts instantly",
       "Printer-ready templates with millimeter calibration",
-      "Configurable filters: baseline wander, notch, and muscle artifact"
+      "Configurable filters: baseline wander, 50/60 Hz notch and muscle artifact"
     ]
   },
   {
@@ -25,7 +25,7 @@ const groups = [
     title: "Runs light",
     items: [
       "CPU use held to about 20–30% during live acquisition",
-      "Memory cleanup loop keeps baselines stable",
+      "Heavy analysis runs in the background, so the live trace never stalls",
       "Crash logger keeps diagnostics for fast recovery"
     ]
   }

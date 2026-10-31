@@ -4,9 +4,9 @@ const supportServices = [
   {
     title: "Deployment & environment setup",
     description:
-      "Remote configuration across Windows and macOS, driver installation and automated build pipelines.",
+      "Remote set-up on Windows PCs, driver installation and automatic updates.",
     points: [
-      "PyInstaller packaging with signed installers",
+      "Compiled Windows installer with automatic updates",
       "Multi-device architecture planning (ECG + Oxygen)"
     ]
   },

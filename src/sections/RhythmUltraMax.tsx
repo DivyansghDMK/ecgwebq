@@ -59,7 +59,7 @@ const stages: Stage[] = [
     pitch: "Open the same report on your desktop for a closer look and a reviewed diagnosis.",
     points: [
       "Magnifier, ruler and caliper for manual measurement",
-      "HRV and automated interpretation across 80+ ECG patterns",
+      "HRV, hyperkalaemia screening and automated interpretation of 42 findings",
       "Annotate, review and export a PDF report",
       "Or plug the device in over USB and record straight into CardioX"
     ],
