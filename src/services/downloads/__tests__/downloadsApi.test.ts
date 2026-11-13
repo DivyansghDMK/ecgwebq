@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDownloadsAdminApi, DownloadsApiError, EMP_CODE_PATTERN, logDownload } from "../downloadsApi";
 
 const BASE = "https://n36lqnqjjj.execute-api.us-east-1.amazonaws.com";
-const TOKEN = "header.payload.signature";
+const TOKEN = "test-admin-token-not-a-jwt";
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
 

@@ -5,7 +5,9 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import ReleasesPage from "../ReleasesPage";
 
 const BASE = "https://n36lqnqjjj.execute-api.us-east-1.amazonaws.com";
-const TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiJ9.c2lnbmF0dXJl";
+// Plain placeholder. The app only accepts a 3-part token, so build that shape at runtime
+// from harmless parts (no JWT-like literal in the repo).
+const TOKEN = ["test-admin-hdr", "test-admin-pld", "test-admin-sig"].join(".");
 const XSS = "<script>alert(1)</script>";
 const DAY = 24 * 60 * 60 * 1000;
 
