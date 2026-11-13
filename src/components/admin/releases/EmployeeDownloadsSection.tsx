@@ -16,9 +16,8 @@ import {
 import {
   computeSummaryStats,
   countLast7Days,
-  filterSummary,
+  downloadedEmployees,
   pageReachesOlderThan7Days,
-  type ShowFilter,
 } from "@/services/downloads/downloadStats";
 import { downloadCsv, toCsv } from "@/services/downloads/csv";
 import {
@@ -135,28 +134,9 @@ function LoadingRow({ text }: { text: string }) {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  hint,
-  highlight = false,
-  testId,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  highlight?: boolean;
-  testId: string;
-}) {
+function StatCard({ label, value, hint, testId }: { label: string; value: string; hint?: string; testId: string }) {
   return (
-    <div
-      className={`rounded-2xl border p-5 shadow-sm ${
-        highlight
-          ? "border-amber-300 bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/10"
-          : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-      }`}
-      data-testid={testId}
-    >
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900" data-testid={testId}>
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
       <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-50">{value}</p>
       {hint && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{hint}</p>}
@@ -188,7 +168,6 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
   const [last7Reload, setLast7Reload] = useState(0);
 
   const [search, setSearch] = useState("");
-  const [show, setShow] = useState<ShowFilter>("all");
 
   const [pageSize, setPageSize] = useState<PageSize>(20);
   const [filterInput, setFilterInput] = useState("");
@@ -379,7 +358,8 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
   // --- Derived ---------------------------------------------------------------
   const summaryItems = useMemo(() => (summary.status === "ok" ? summary.value : []), [summary]);
   const stats = useMemo(() => computeSummaryStats(summaryItems), [summaryItems]);
-  const visibleSummary = useMemo(() => filterSummary(summaryItems, search, show), [summaryItems, search, show]);
+  const downloaded = useMemo(() => downloadedEmployees(summaryItems), [summaryItems]);
+  const visibleSummary = useMemo(() => downloadedEmployees(downloaded, search), [downloaded, search]);
 
   const statValue = (value: number) => (summary.status === "ok" ? String(value) : summary.status === "loading" ? "…" : "—");
   const last7Value =
@@ -416,7 +396,7 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
         `employee-downloads-summary-${stamp}.csv`,
         toCsv(
           ["E-Code", "Name", "Access", "Downloads", "Last downloaded (IST)", "Last version"],
-          filterSummary(summaryRows, "", "all").map((r) => [
+          downloadedEmployees(summaryRows).map((r) => [
             r.emp_code,
             r.employee_name,
             r.is_active ? "Active" : "Left",
@@ -474,16 +454,10 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
       </div>
 
       {/* b) Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard testId="stat-total" label="Total downloads" value={statValue(stats.totalDownloads)} />
-        <StatCard
-          testId="stat-employees"
-          label="Employees who downloaded"
-          value={statValue(stats.employeesDownloaded)}
-          hint={summary.status === "ok" ? `of ${stats.activeEmployees} active` : undefined}
-        />
+        <StatCard testId="stat-employees" label="Employees who downloaded" value={statValue(stats.employeesDownloaded)} />
         <StatCard testId="stat-last7" label="Last 7 days" value={last7Value} hint={last7.status === "error" ? last7.message : undefined} />
-        <StatCard testId="stat-never" label="Active, never downloaded" value={statValue(stats.activeNeverDownloaded)} highlight />
       </div>
       {last7.status === "error" && (
         <button type="button" onClick={() => setLast7Reload((k) => k + 1)} className={secondaryBtn}>
@@ -509,14 +483,6 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
                 maxLength={100}
               />
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-              Show
-              <select value={show} onChange={(e) => setShow(e.target.value as ShowFilter)} className={inputClass}>
-                <option value="all">All employees</option>
-                <option value="downloaded">Downloaded</option>
-                <option value="never">Never downloaded</option>
-              </select>
-            </label>
           </div>
         </div>
         <div className={panel}>
@@ -524,8 +490,8 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
             <LoadingRow text="Loading employees…" />
           ) : summary.status === "error" ? (
             <ErrorBox message={summary.message} onRetry={() => setSummaryReload((k) => k + 1)} />
-          ) : summaryItems.length === 0 ? (
-            <p className="p-6 text-sm text-slate-600 dark:text-slate-400">No downloads recorded yet</p>
+          ) : downloaded.length === 0 ? (
+            <p className="p-6 text-sm text-slate-600 dark:text-slate-400">No downloads recorded yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800" data-testid="summary-table">
@@ -546,7 +512,7 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
                   {visibleSummary.length === 0 && (
                     <tr>
                       <td className={td} colSpan={7}>
-                        No employees match these filters.
+                        No employees match this search.
                       </td>
                     </tr>
                   )}
@@ -561,7 +527,7 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
                       <td className={`${td} whitespace-nowrap`}>{istDate(r.last_downloaded_at)}</td>
                       <td className={td}>{formatOptional(r.last_version)}</td>
                       <td className={td}>
-                        {r.downloads > 0 && isValidEmpCode(r.emp_code) ? (
+                        {isValidEmpCode(r.emp_code) ? (
                           <button
                             type="button"
                             onClick={() => viewLog(r.emp_code)}
@@ -634,7 +600,7 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
                     {rows.length === 0 && (
                       <tr>
                         <td className={`${td} h-32`} colSpan={7}>
-                          {isLoadingLog ? "" : appliedCode ? "No downloads for this employee code." : "No downloads recorded yet"}
+                          {isLoadingLog ? "" : appliedCode ? "No downloads for this employee code." : "No downloads recorded yet."}
                         </td>
                       </tr>
                     )}

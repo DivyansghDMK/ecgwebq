@@ -5,24 +5,16 @@ export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 export interface DownloadStats {
   totalDownloads: number;
   employeesDownloaded: number;
-  activeEmployees: number;
-  activeNeverDownloaded: number;
 }
 
 export function computeSummaryStats(items: DownloadSummaryItem[]): DownloadStats {
   let totalDownloads = 0;
   let employeesDownloaded = 0;
-  let activeEmployees = 0;
-  let activeNeverDownloaded = 0;
   for (const item of items) {
     totalDownloads += item.downloads;
     if (item.downloads > 0) employeesDownloaded += 1;
-    if (item.is_active) {
-      activeEmployees += 1;
-      if (item.downloads === 0) activeNeverDownloaded += 1;
-    }
   }
-  return { totalDownloads, employeesDownloaded, activeEmployees, activeNeverDownloaded };
+  return { totalDownloads, employeesDownloaded };
 }
 
 /** True when the timestamp is within the 7 days before `now` (inclusive). */
@@ -43,17 +35,27 @@ export function pageReachesOlderThan7Days(rows: DownloadLogItem[], now: number):
   });
 }
 
-export type ShowFilter = "all" | "downloaded" | "never";
+const lastDownloadedMs = (item: DownloadSummaryItem): number => {
+  const t = item.last_downloaded_at ? Date.parse(item.last_downloaded_at) : NaN;
+  return Number.isFinite(t) ? t : -Infinity;
+};
 
-/** Client-side search (code or name), Show filter, and default sort (downloads desc, then code). */
-export function filterSummary(items: DownloadSummaryItem[], search: string, show: ShowFilter): DownloadSummaryItem[] {
+/**
+ * Employees who downloaded at least once (active or left), matching the search (code or name),
+ * sorted by downloads desc, then most recent download, then code.
+ */
+export function downloadedEmployees(items: DownloadSummaryItem[], search = ""): DownloadSummaryItem[] {
   const needle = search.trim().toLowerCase();
   return items
-    .filter((item) => {
-      if (show === "downloaded" && item.downloads === 0) return false;
-      if (show === "never" && item.downloads > 0) return false;
-      if (!needle) return true;
-      return item.emp_code.toLowerCase().includes(needle) || item.employee_name.toLowerCase().includes(needle);
-    })
-    .sort((a, b) => b.downloads - a.downloads || a.emp_code.localeCompare(b.emp_code));
+    .filter(
+      (item) =>
+        item.downloads > 0 &&
+        (!needle || item.emp_code.toLowerCase().includes(needle) || item.employee_name.toLowerCase().includes(needle))
+    )
+    .sort(
+      (a, b) =>
+        b.downloads - a.downloads ||
+        lastDownloadedMs(b) - lastDownloadedMs(a) ||
+        a.emp_code.localeCompare(b.emp_code)
+    );
 }

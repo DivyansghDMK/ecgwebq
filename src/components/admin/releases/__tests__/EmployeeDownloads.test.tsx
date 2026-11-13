@@ -11,9 +11,11 @@ const DAY = 24 * 60 * 60 * 1000;
 
 const summaryItems = [
   { emp_code: "DM1", employee_name: "Asha Rao", is_active: true, downloads: 3, last_downloaded_at: "2026-11-10T05:00:00Z", last_version: "1.3.10" },
-  { emp_code: "DM2", employee_name: XSS, is_active: true, downloads: 0, last_downloaded_at: null, last_version: null },
+  { emp_code: "DM2", employee_name: "Zero Active", is_active: true, downloads: 0, last_downloaded_at: null, last_version: null },
   { emp_code: "DM3", employee_name: "Bob Left", is_active: false, downloads: 2, last_downloaded_at: "2026-09-01T05:00:00Z", last_version: "1.3.8" },
   { emp_code: "DM4", employee_name: "Neha Singh", is_active: true, downloads: 1, last_downloaded_at: "2026-11-01T05:00:00Z", last_version: "1.3.9" },
+  { emp_code: "DM5", employee_name: XSS, is_active: true, downloads: 1, last_downloaded_at: "2026-11-12T05:00:00Z", last_version: "1.3.10" },
+  { emp_code: "DM6", employee_name: "Zero Left", is_active: false, downloads: 0, last_downloaded_at: null, last_version: null },
 ];
 
 function logRow(i: number, ageMs: number, emp_code = "DM1", employee_name = "Asha Rao") {
@@ -150,33 +152,47 @@ describe("Employee downloads section", () => {
     vi.restoreAllMocks();
   });
 
-  it("computes the stat cards from fixtures", async () => {
+  it("shows exactly 3 stat cards computed from fixtures", async () => {
     stubFetch();
     renderAt("/artists/releases#downloads");
-    await waitFor(() => expect(within(screen.getByTestId("stat-total")).getByText("6")).toBeTruthy());
-    expect(within(screen.getByTestId("stat-employees")).getByText("3")).toBeTruthy();
-    expect(within(screen.getByTestId("stat-employees")).getByText("of 3 active")).toBeTruthy();
-    expect(within(screen.getByTestId("stat-never")).getByText("1")).toBeTruthy();
+    await waitFor(() => expect(within(screen.getByTestId("stat-total")).getByText("7")).toBeTruthy());
+    expect(screen.getByTestId("stat-employees").textContent).toBe("Employees who downloaded4");
     await waitFor(() => expect(within(screen.getByTestId("stat-last7")).getByText("3")).toBeTruthy());
+    expect(document.querySelectorAll('[data-testid^="stat-"]')).toHaveLength(3);
+    expect(screen.queryByText(/never downloaded/i)).toBeNull();
+    expect(screen.queryByText(/ active$/)).toBeNull();
   });
 
-  it("search and Show filter the By employee table; default sort is downloads desc", async () => {
+  it("lists only employees who downloaded (left ones too), sorted by downloads, most recent, code", async () => {
     stubFetch();
     renderAt("/artists/releases#downloads");
     const table = await screen.findByTestId("summary-table");
     const codes = () => within(table).queryAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
-    expect(codes()).toEqual(["DM1", "DM3", "DM4", "DM2"]);
+    // DM5 and DM4 both have 1 download: DM5 downloaded more recently.
+    expect(codes()).toEqual(["DM1", "DM3", "DM5", "DM4"]);
+    expect(within(table).queryByText("Zero Active")).toBeNull();
+    expect(within(table).queryByText("Zero Left")).toBeNull();
+    // A left employee who downloaded is shown with the Left badge.
+    const bob = within(table).getByText("DM3").closest("tr") as HTMLElement;
+    expect(within(bob).getByText("Left")).toBeTruthy();
+    expect(within(bob).getByRole("button", { name: "View log" })).toBeTruthy();
+    // No Show filter any more.
+    expect(screen.queryByRole("combobox", { name: /show/i })).toBeNull();
+    expect(screen.queryByText("Never downloaded")).toBeNull();
+  });
 
-    fireEvent.change(screen.getByPlaceholderText("Search code or name"), { target: { value: "neha" } });
+  it("search (code or name) applies to downloaded employees only", async () => {
+    stubFetch();
+    renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+    const codes = () => within(table).queryAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
+    const search = screen.getByPlaceholderText("Search code or name");
+    fireEvent.change(search, { target: { value: "neha" } });
     expect(codes()).toEqual(["DM4"]);
-    fireEvent.change(screen.getByPlaceholderText("Search code or name"), { target: { value: "" } });
-
-    fireEvent.change(screen.getByRole("combobox", { name: /show/i }), { target: { value: "never" } });
-    expect(codes()).toEqual(["DM2"]);
-    fireEvent.change(screen.getByRole("combobox", { name: /show/i }), { target: { value: "downloaded" } });
-    expect(codes()).toEqual(["DM1", "DM3", "DM4"]);
-    // Access badges
-    expect(within(table).getByText("Left")).toBeTruthy();
+    fireEvent.change(search, { target: { value: "dm3" } });
+    expect(codes()).toEqual(["DM3"]);
+    fireEvent.change(search, { target: { value: "zero" } });
+    expect(within(table).getByText("No employees match this search.")).toBeTruthy();
   });
 
   it("renders a <script> employee name as plain text", async () => {
@@ -198,9 +214,6 @@ describe("Employee downloads section", () => {
     await waitFor(() => expect(calls.some((c) => new URL(c.url, "http://x").searchParams.get("emp_code") === "DM4")).toBe(true));
     const log = screen.getByTestId("log-table");
     await waitFor(() => expect(within(log).getByText("Neha Singh")).toBeTruthy());
-    // DM2 (0 downloads) has no View log link.
-    const dm2 = within(table).getByText("DM2").closest("tr") as HTMLElement;
-    expect(within(dm2).queryByRole("button", { name: "View log" })).toBeNull();
   });
 
   it("an invalid code in the filter is not sent", async () => {
@@ -278,16 +291,18 @@ describe("Employee downloads section", () => {
     expect(await screen.findByTestId("summary-table")).toBeTruthy();
   });
 
-  it("shows the empty state", async () => {
+  it("shows the empty state when nobody has downloaded (0-download employees are not listed)", async () => {
     stubFetch((url) =>
       url.pathname === "/admin/downloads/summary"
-        ? ok({ items: [] })
+        ? ok({ items: summaryItems.filter((i) => i.downloads === 0) })
         : url.pathname === "/admin/downloads"
           ? ok({ items: [], next_cursor: null })
           : undefined
     );
     renderAt("/artists/releases#downloads");
-    await waitFor(() => expect(screen.getAllByText("No downloads recorded yet")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText("No downloads recorded yet.")).toHaveLength(2));
+    expect(screen.queryByTestId("summary-table")).toBeNull();
+    expect(screen.queryByText("Zero Active")).toBeNull();
   });
 
   it("exports summary and log as CSV files following cursors", async () => {
@@ -314,13 +329,23 @@ describe("Employee downloads section", () => {
     expect(names[1]).toMatch(/^employee-downloads-log-\d{4}-\d{2}-\d{2}\.csv$/);
     expect(calls.some((c) => c.url.includes("cursor=e2"))).toBe(true);
 
-    const bytes = await new Promise<Uint8Array>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
-      reader.readAsArrayBuffer(blobs[1]);
-    });
+    const readBlob = (blob: Blob) =>
+      new Promise<Uint8Array>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+        reader.readAsArrayBuffer(blob);
+      });
+    const decode = (b: Uint8Array) => new TextDecoder("utf-8", { ignoreBOM: true }).decode(b);
+
+    // Summary CSV: only employees with downloads > 0, in table order.
+    const summaryText = decode(await readBlob(blobs[0]));
+    const summaryLines = summaryText.slice(1).trim().split("\r\n");
+    expect(summaryLines.slice(1).map((l) => l.split(",")[0])).toEqual(['"DM1"', '"DM3"', '"DM5"', '"DM4"']);
+    expect(summaryText).not.toMatch(/Zero Active|Zero Left|DM2|DM6/);
+
+    const bytes = await readBlob(blobs[1]);
     expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]); // UTF-8 BOM
-    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes);
+    const text = decode(bytes);
     expect(text.charCodeAt(0)).toBe(0xfeff);
     expect(text).toContain(`"'=HYPERLINK(1)"`);
     expect(text.trim().split("\r\n")).toHaveLength(3); // header + 2 rows
