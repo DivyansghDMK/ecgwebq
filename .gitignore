@@ -12,7 +12,6 @@ node_modules/
 # Environment variables (real values never go to git)
 .env
 .env.*
-!.env.example
 
 # Logs
 *.log

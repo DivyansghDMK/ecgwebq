@@ -7,7 +7,8 @@ import VersionDownloadPage from "../VersionDownloadPage";
 const CDN = "https://dgz43izxcyy2a.cloudfront.net";
 const STABLE_PATH = "/releases-cdn/releases/stable/latest.json";
 const BETA_PATH = "/releases-cdn/releases/beta/latest.json";
-const VALIDATE_URL = "https://6jhix49qt6.execute-api.us-east-1.amazonaws.com/version/validate-company-code";
+const LOG_BASE = "https://n36lqnqjjj.execute-api.us-east-1.amazonaws.com";
+const VERIFY_URL = `${LOG_BASE}/version/verify`;
 
 function latest(channel: "stable" | "beta", version: string, notes: string, shaChar: string) {
   return {
@@ -35,7 +36,7 @@ function stubFetch() {
       urls.push(url);
       if (url === STABLE_PATH) return new Response(JSON.stringify(stableJson), { status: 200 });
       if (url === BETA_PATH) return new Response(JSON.stringify(betaJson), { status: 200 });
-      if (url === VALIDATE_URL) return new Response(JSON.stringify({ success: true, employee_name: "Test User" }), { status: 200 });
+      if (url === VERIFY_URL) return new Response(JSON.stringify({ success: true, employee_name: "Test User" }), { status: 200 });
       return new Response("unexpected", { status: 599 });
     })
   );
@@ -45,6 +46,7 @@ function stubFetch() {
 describe("VersionDownloadPage (internal)", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_RELEASES_CDN_BASE", CDN);
+    vi.stubEnv("VITE_DOWNLOAD_LOG_API_BASE", LOG_BASE);
   });
 
   afterEach(() => {
@@ -79,6 +81,6 @@ describe("VersionDownloadPage (internal)", () => {
     expect(html).not.toMatch(/SHA-256/i);
 
     // Only the two latest.json files and the existing employee-code check.
-    expect(new Set(urls)).toEqual(new Set([STABLE_PATH, BETA_PATH, VALIDATE_URL]));
+    expect(new Set(urls)).toEqual(new Set([STABLE_PATH, BETA_PATH, VERIFY_URL]));
   });
 });

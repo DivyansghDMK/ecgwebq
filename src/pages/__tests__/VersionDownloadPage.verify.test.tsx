@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import VersionDownloadPage from "../VersionDownloadPage";
-import { VALIDATE_COMPANY_CODE_URL } from "@/services/versionApi";
 import { MSG_NETWORK, MSG_NOT_RECOGNISED, MSG_RATE_LIMITED } from "@/hooks/useVersionVerification";
 
 const XSS_NAME = "<script>alert(1)</script>";
+const LOG_BASE = "https://n36lqnqjjj.execute-api.us-east-1.amazonaws.com";
+const VERIFY_URL = `${LOG_BASE}/version/verify`;
 
 type Reply = { status: number; body?: unknown } | "network";
 
@@ -15,7 +16,7 @@ function stubVerify(replies: Reply[] | ((code: string) => Reply)) {
   const queue = Array.isArray(replies) ? [...replies] : null;
   const fn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url !== VALIDATE_COMPANY_CODE_URL) {
+    if (url !== VERIFY_URL) {
       return { ok: false, status: 404, json: async () => ({}) } as unknown as Response;
     }
     const code = JSON.parse(String(init?.body)).emp_code as string;
@@ -27,9 +28,10 @@ function stubVerify(replies: Reply[] | ((code: string) => Reply)) {
   return fn;
 }
 
-const verifyCalls = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls.filter(([u]) => String(u) === VALIDATE_COMPANY_CODE_URL).length;
+const verifyCalls = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls.filter(([u]) => String(u) === VERIFY_URL).length;
 
-const success = (name = "Asha Rao"): Reply => ({ status: 200, body: { success: true, employee_name: name } });
+const success = (name = "Asha Rao"): Reply => ({ status: 200, body: { success: true, employee_name: name, data: { employee_name: name } } });
+const notRecognised: Reply = { status: 403, body: { success: false, error: { code: "NOT_RECOGNISED" } } };
 
 function renderPage() {
   render(
@@ -55,6 +57,7 @@ describe("/version employee-code check (hardened)", () => {
 
   beforeEach(() => {
     vi.stubEnv("VITE_RELEASES_CDN_BASE", "https://dgz43izxcyy2a.cloudfront.net");
+    vi.stubEnv("VITE_DOWNLOAD_LOG_API_BASE", LOG_BASE);
     storageWrites = [];
     vi.spyOn(localStorage, "setItem").mockImplementation((...args) => void storageWrites.push(args));
     vi.spyOn(sessionStorage, "setItem").mockImplementation((...args) => void storageWrites.push(args));
@@ -77,6 +80,16 @@ describe("/version employee-code check (hardened)", () => {
     fireEvent.click(verifyButton());
     await waitFor(() => expect(nameInput().value).toBe("Asha Rao"));
 
+    // Request: the rate-limited endpoint, body { emp_code }, no Authorization header.
+    const fetchMock = vi.mocked(fetch);
+    const call = fetchMock.mock.calls.find(([u]) => String(u) === VERIFY_URL);
+    expect(call).toBeDefined();
+    const init = call![1] as RequestInit;
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(String(init.body))).toEqual({ emp_code: "DM485" });
+    expect(new Headers(init.headers).has("Authorization")).toBe(false);
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes("validate-company-code"))).toBe(false);
+
     // Not in any attribute (other than the input's own value), title or aria text, nor the URL.
     for (const el of Array.from(document.body.querySelectorAll("*"))) {
       for (const attr of Array.from(el.attributes)) {
@@ -89,6 +102,43 @@ describe("/version employee-code check (hardened)", () => {
     fireEvent.change(codeInput(), { target: { value: "DM48" } });
     expect(nameInput().value).toBe("");
     expect(document.body.textContent).not.toContain("Asha Rao");
+  });
+
+  it("changing the code hides the verified banner and line together with the name", async () => {
+    stubVerify([success()]);
+    renderPage();
+    fireEvent.change(codeInput(), { target: { value: "DM485" } });
+    fireEvent.click(verifyButton());
+    await waitFor(() => expect(nameInput().value).toBe("Asha Rao"));
+    await waitFor(() => expect(screen.getByText("Employee verified successfully!")).toBeTruthy());
+    expect(screen.getByText("Access verified — choose a build below.")).toBeTruthy();
+
+    fireEvent.change(codeInput(), { target: { value: "DM48" } });
+    // Same render as the name being cleared.
+    expect(nameInput().value).toBe("");
+    expect(screen.queryByText("Employee verified successfully!")).toBeNull();
+    expect(screen.queryByText("Access verified — choose a build below.")).toBeNull();
+  });
+
+  it("the verified banner hides after 3 s and does not come back", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    stubVerify([success()]);
+    renderPage();
+    fireEvent.change(codeInput(), { target: { value: "DM485" } });
+    fireEvent.click(verifyButton());
+    await waitFor(() => expect(screen.getByText("Employee verified successfully!")).toBeTruthy());
+
+    await act(async () => {
+      vi.advanceTimersByTime(3_000);
+    });
+    expect(screen.queryByText("Employee verified successfully!")).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByText("Employee verified successfully!")).toBeNull();
+    // Still verified: the name and the "Access verified" line stay.
+    expect(nameInput().value).toBe("Asha Rao");
+    expect(screen.getByText("Access verified — choose a build below.")).toBeTruthy();
   });
 
   it("never writes the name or code to localStorage/sessionStorage", async () => {
@@ -115,9 +165,9 @@ describe("/version employee-code check (hardened)", () => {
 
   it("every failed verification shows the same generic message", async () => {
     const fn = stubVerify([
-      { status: 404, body: { success: false, message: "User does not exist" } },
-      { status: 403, body: { success: false, message: "Employee inactive" } },
-      { status: 200, body: { success: false, message: "Wrong prefix" } },
+      { status: 403, body: { success: false, error: { code: "NOT_RECOGNISED", message: "Employee inactive" } } },
+      { status: 400, body: { success: false, error: { code: "BAD_REQUEST", message: "Wrong prefix" } } },
+      { status: 200, body: { success: true, employee_name: "", message: "User does not exist" } },
     ]);
     renderPage();
     for (let i = 1; i <= 3; i += 1) {
@@ -128,15 +178,17 @@ describe("/version employee-code check (hardened)", () => {
   });
 
   it("network errors show the retry message", async () => {
-    const fn = stubVerify(["network"]);
+    const fn = stubVerify(["network", { status: 503 }]);
     renderPage();
     await attempt("DM485", fn, 1);
+    expect(screen.getByText(MSG_NETWORK)).toBeTruthy();
+    await attempt("DM486", fn, 2);
     expect(screen.getByText(MSG_NETWORK)).toBeTruthy();
   });
 
   it("HTTP 429 shows the wait message and disables Verify for 60 s", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
-    const fn = stubVerify([{ status: 429 }, success()]);
+    const fn = stubVerify([{ status: 429, body: { success: false, error: { code: "TOO_MANY_ATTEMPTS" } } }, success()]);
     renderPage();
     fireEvent.change(codeInput(), { target: { value: "DM485" } });
     fireEvent.click(verifyButton());
@@ -158,7 +210,7 @@ describe("/version employee-code check (hardened)", () => {
 
   it("4 failures disable Verify for 60 s with a live countdown", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "Date"] });
-    const fn = stubVerify(() => ({ status: 404 }));
+    const fn = stubVerify(() => notRecognised);
     renderPage();
     for (let i = 1; i <= 3; i += 1) await attempt(`DM10${i}`, fn, i);
     expect(verifyButton().disabled).toBe(false);
@@ -188,7 +240,7 @@ describe("/version employee-code check (hardened)", () => {
 
   it("a successful verification resets the failure count", async () => {
     let n = 0;
-    const fn = stubVerify(() => (++n === 4 ? success() : { status: 404 }));
+    const fn = stubVerify(() => (++n === 4 ? success() : notRecognised));
     renderPage();
     for (let i = 1; i <= 3; i += 1) await attempt(`DM20${i}`, fn, i);
     fireEvent.change(codeInput(), { target: { value: "DM204" } });
