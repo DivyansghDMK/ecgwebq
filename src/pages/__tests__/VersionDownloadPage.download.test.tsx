@@ -3,11 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import VersionDownloadPage, { MSG_ACCESS_REVOKED } from "../VersionDownloadPage";
-import { VALIDATE_COMPANY_CODE_URL } from "@/services/versionApi";
 
 const CDN = "https://dgz43izxcyy2a.cloudfront.net";
 const LOG_BASE = "https://n36lqnqjjj.execute-api.us-east-1.amazonaws.com";
 const LOG_URL = `${LOG_BASE}/downloads/log`;
+const VERIFY_URL = `${LOG_BASE}/version/verify`;
 const STABLE_PATH = "/releases-cdn/releases/stable/latest.json";
 const BETA_PATH = "/releases-cdn/releases/beta/latest.json";
 
@@ -38,7 +38,7 @@ function stubFetch(logHandler: LogHandler) {
       calls.push({ url, init });
       if (url === STABLE_PATH) return new Response(JSON.stringify(stableJson), { status: 200 });
       if (url === BETA_PATH) return new Response(JSON.stringify(betaJson), { status: 200 });
-      if (url === VALIDATE_COMPANY_CODE_URL) {
+      if (url === VERIFY_URL) {
         return new Response(JSON.stringify({ success: true, employee_name: "Test User" }), { status: 200 });
       }
       if (url === LOG_URL) return logHandler(init ?? {});

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { validateCompanyCode } from '@/services/versionApi';
+import { verifyEmployeeCode } from '@/services/versionApi';
 import { isValidEmpCode } from '@/services/downloads/downloadsApi';
 
 export const MSG_NOT_RECOGNISED = 'Code not recognised. Check your employee code or contact the admin.';
@@ -91,7 +91,7 @@ export function useVersionVerification() {
       const requestId = requestIdRef.current;
 
       setVerification({ ...EMPTY, isLoading: true });
-      const result = await validateCompanyCode(empCode, { signal: controller.signal });
+      const result = await verifyEmployeeCode(empCode, { signal: controller.signal });
       if (requestId !== requestIdRef.current || result.status === 'aborted') {
         return; // stale or cancelled
       }
