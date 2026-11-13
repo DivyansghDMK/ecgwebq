@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, ChevronLeft, ChevronRight, FileSpreadsheet, FlaskConical, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, FileSpreadsheet, FlaskConical, Loader2, RefreshCw, Search, X } from "lucide-react";
 import { clearAuthSession } from "@/lib/auth";
 import { formatDateIST, formatOptional } from "@/lib/format";
 import {
@@ -37,7 +37,6 @@ type PageSize = (typeof PAGE_SIZES)[number];
 /** Safety limits when following cursors. */
 export const EXPORT_MAX_ROWS = 10_000;
 const LAST7_MAX_PAGES = 50;
-const FILTER_DEBOUNCE_MS = 400;
 
 const sectionTitle = "text-xl font-semibold text-slate-900 dark:text-slate-50";
 const sectionHint = "text-sm text-slate-600 dark:text-slate-400";
@@ -49,6 +48,8 @@ const inputClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 const secondaryBtn =
   "inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
+
+const LOG_PANEL_ID = "employee-download-log";
 
 const GENERIC_ERROR = "Something went wrong. Please try again.";
 
@@ -169,12 +170,11 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
 
   const [search, setSearch] = useState("");
 
+  /** Employee whose log is open (React state only: never in the URL or storage). null = log hidden. */
+  const [selected, setSelected] = useState<{ code: string; name: string } | null>(null);
   const [pageSize, setPageSize] = useState<PageSize>(20);
-  const [filterInput, setFilterInput] = useState("");
-  const [appliedCode, setAppliedCode] = useState("");
-  const [filterError, setFilterError] = useState<string | null>(null);
   const [pagination, dispatch] = useReducer(logReducer, initialLogPagination);
-  const [loadingPage, setLoadingPage] = useState<number | null>(0);
+  const [loadingPage, setLoadingPage] = useState<number | null>(null);
   const [logError, setLogError] = useState<{ message: string; pageIndex: number } | null>(null);
   const [logReload, setLogReload] = useState(0);
 
@@ -184,7 +184,9 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
   const logControllerRef = useRef<AbortController | null>(null);
   const exportControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
-  const logSectionRef = useRef<HTMLElement>(null);
+  const logHeadingRef = useRef<HTMLHeadingElement>(null);
+  const viewLogButtonsRef = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const focusLogHeadingRef = useRef(false);
   const tableHeadRef = useRef<HTMLTableSectionElement>(null);
   const scrollOnPageChangeRef = useRef(false);
 
@@ -246,8 +248,17 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
   }, [api, redirectIfUnauthorized, reloadKey, last7Reload]);
 
   // --- Download log (cursor pagination like Upload history) -----------------
+  const selectedCode = selected?.code ?? null;
+
+  const abortLog = useCallback(() => {
+    requestIdRef.current += 1;
+    logControllerRef.current?.abort();
+    logControllerRef.current = null;
+  }, []);
+
   const fetchLogPage = useCallback(
     async (index: number, cursor: string | null) => {
+      if (!selectedCode) return;
       logControllerRef.current?.abort();
       const controller = new AbortController();
       logControllerRef.current = controller;
@@ -258,7 +269,7 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
         const page = await api.getLog({
           limit: pageSize,
           cursor,
-          empCode: appliedCode || undefined,
+          empCode: selectedCode,
           signal: controller.signal,
         });
         if (requestId !== requestIdRef.current) return;
@@ -272,14 +283,27 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
         if (requestId === requestIdRef.current) setLoadingPage(null);
       }
     },
-    [api, pageSize, appliedCode, redirectIfUnauthorized]
+    [api, pageSize, selectedCode, redirectIfUnauthorized]
   );
 
-  // Page size, filter or Refresh: back to page 1 with an empty cache.
+  // Employee switched, page size changed or Refresh: abort the old request, back to page 1.
   useEffect(() => {
+    abortLog();
     dispatch({ type: "reset" });
-    void fetchLogPage(0, null);
-  }, [fetchLogPage, reloadKey, logReload]);
+    setLogError(null);
+    setLoadingPage(null);
+    if (selectedCode) {
+      void fetchLogPage(0, null);
+    }
+  }, [fetchLogPage, selectedCode, abortLog, reloadKey, logReload]);
+
+  // Move keyboard focus to the log heading after "View log".
+  useEffect(() => {
+    if (selectedCode && focusLogHeadingRef.current) {
+      focusLogHeadingRef.current = false;
+      logHeadingRef.current?.focus();
+    }
+  }, [selectedCode]);
 
   // Abort everything when the section is left.
   useEffect(
@@ -298,31 +322,20 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
     }
   }, [pagination.pageIndex]);
 
-  // Employee-code filter: applied on Enter or after 400 ms; only valid codes are sent.
-  const applyFilter = useCallback((raw: string) => {
-    const value = raw.trim().toUpperCase();
-    if (!value) {
-      setFilterError(null);
-      setAppliedCode("");
+  /** "View log" toggles: opens this employee's log, switches from another one, or closes it. */
+  const toggleLog = (code: string, name: string) => {
+    if (selectedCode === code) {
+      setSelected(null); // focus stays on this (now "View log") button
       return;
     }
-    if (!isValidEmpCode(value)) {
-      setFilterError("Use 2 letters followed by numbers, e.g. DM485.");
-      return;
-    }
-    setFilterError(null);
-    setAppliedCode(value);
-  }, []);
+    focusLogHeadingRef.current = true;
+    setSelected({ code, name });
+  };
 
-  useEffect(() => {
-    const timer = setTimeout(() => applyFilter(filterInput), FILTER_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [filterInput, applyFilter]);
-
-  const viewLog = (code: string) => {
-    setFilterInput(code);
-    applyFilter(code);
-    logSectionRef.current?.scrollIntoView?.({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  const closeLog = () => {
+    const code = selectedCode;
+    setSelected(null);
+    if (code) viewLogButtonsRef.current.get(code)?.focus();
   };
 
   const isLoadingLog = loadingPage !== null;
@@ -530,10 +543,16 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
                         {isValidEmpCode(r.emp_code) ? (
                           <button
                             type="button"
-                            onClick={() => viewLog(r.emp_code)}
-                            className="text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-400 dark:hover:text-orange-300"
+                            ref={(el) => {
+                              if (el) viewLogButtonsRef.current.set(r.emp_code, el);
+                              else viewLogButtonsRef.current.delete(r.emp_code);
+                            }}
+                            onClick={() => toggleLog(r.emp_code, r.employee_name)}
+                            aria-expanded={selectedCode === r.emp_code}
+                            aria-controls={LOG_PANEL_ID}
+                            className="whitespace-nowrap text-sm font-medium text-orange-600 hover:text-orange-700 hover:underline dark:text-orange-400 dark:hover:text-orange-300"
                           >
-                            View log
+                            {selectedCode === r.emp_code ? "Hide log" : "View log"}
                           </button>
                         ) : null}
                       </td>
@@ -546,142 +565,120 @@ export function EmployeeDownloadsSection({ reloadKey = 0, api: apiProp, now = Da
         </div>
       </div>
 
-      {/* d) Download log */}
-      <section ref={logSectionRef} className="scroll-mt-4 space-y-3" aria-labelledby="download-log-title">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h3 id="download-log-title" className={subTitle}>
-            Download log
-          </h3>
-          <div className="flex flex-col items-end gap-1">
-            <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-              Employee code
-              <input
-                type="text"
-                value={filterInput}
-                onChange={(e) => setFilterInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") applyFilter(filterInput);
-                }}
-                placeholder="e.g. DM485"
-                maxLength={10}
-                autoComplete="off"
-                aria-invalid={filterError ? true : undefined}
-                aria-describedby={filterError ? "download-log-filter-error" : undefined}
-                className={`${inputClass} w-36 font-mono`}
-              />
-            </label>
-            {filterError && (
-              <span id="download-log-filter-error" className="text-xs text-red-600 dark:text-red-300">
-                {filterError}
-              </span>
+      {/* d) Download log: only for the employee picked with "View log" */}
+      {selected && (
+        <section id={LOG_PANEL_ID} className="scroll-mt-4 space-y-3" aria-labelledby="download-log-title">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 id="download-log-title" ref={logHeadingRef} tabIndex={-1} className={`${subTitle} focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 rounded`}>
+              Download log — {selected.code} · {formatOptional(selected.name)}
+            </h3>
+            <button type="button" onClick={closeLog} aria-label="Close download log" className={secondaryBtn}>
+              <X className="h-4 w-4" aria-hidden="true" />
+              Close
+            </button>
+          </div>
+
+          <div className={panel}>
+            {logError && !page ? (
+              <ErrorBox message={logError.message} onRetry={retryLog} />
+            ) : (
+              <>
+                <div className="relative overflow-x-auto" aria-busy={isLoadingLog}>
+                  <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800" data-testid="log-table">
+                    <thead ref={tableHeadRef} className="scroll-mt-4">
+                      <tr>
+                        <th className={th}>Time (IST)</th>
+                        <th className={th}>Version</th>
+                        <th className={th}>Channel</th>
+                        <th className={th}>Device</th>
+                        <th className={th}>IP address</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y divide-slate-100 transition-opacity dark:divide-slate-800 ${isLoadingLog ? "opacity-40" : ""}`}>
+                      {rows.length === 0 && (
+                        <tr>
+                          <td className={`${td} h-32`} colSpan={5}>
+                            {isLoadingLog ? "" : "No downloads recorded for this employee."}
+                          </td>
+                        </tr>
+                      )}
+                      {rows.map((r, i) => (
+                        <tr key={r.id || `${r.downloaded_at}-${i}`}>
+                          <td className={`${td} whitespace-nowrap`}>{formatDateIST(r.downloaded_at)}</td>
+                          <td className={`${td} font-semibold text-slate-900 dark:text-slate-100`}>{formatOptional(r.version)}</td>
+                          <td className={td}>
+                            <DownloadChannelBadge channel={r.channel} />
+                          </td>
+                          <td className={`${td} max-w-xs break-words`}>{formatOptional(r.device)}</td>
+                          <td className={`${td} font-mono text-xs`}>{formatOptional(r.ip)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {isLoadingLog && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex items-start justify-center pt-8" role="status">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-700 shadow dark:bg-slate-800 dark:text-slate-200">
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Loading page {(loadingPage ?? 0) + 1}…
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+                  <span aria-live="polite" aria-atomic="true" data-testid="log-page-status">
+                    Page {pagination.pageIndex + 1}
+                    {range ? ` · Showing ${range.from}–${range.to}` : ""}
+                  </span>
+
+                  {logError && (
+                    <span className="flex items-center gap-2 text-red-600 dark:text-red-300" role="alert">
+                      {logError.message}
+                      <button type="button" onClick={retryLog} className="font-semibold underline" aria-label="Retry loading this page">
+                        Retry
+                      </button>
+                    </span>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2">
+                      Rows per page
+                      <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value) as PageSize)} className={inputClass}>
+                        {PAGE_SIZES.map((size) => (
+                          <option key={size} value={size}>
+                            {size}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => goToPage(pagination.pageIndex - 1)}
+                      disabled={!canGoPrevious(pagination) || isLoadingLog}
+                      aria-label="Previous page"
+                      className={secondaryBtn}
+                    >
+                      <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => goToPage(pagination.pageIndex + 1)}
+                      disabled={!canGoNext(pagination) || isLoadingLog}
+                      aria-label="Next page"
+                      className={secondaryBtn}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </div>
-        </div>
-
-        <div className={panel}>
-          {logError && !page ? (
-            <ErrorBox message={logError.message} onRetry={retryLog} />
-          ) : (
-            <>
-              <div className="relative overflow-x-auto" aria-busy={isLoadingLog}>
-                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800" data-testid="log-table">
-                  <thead ref={tableHeadRef} className="scroll-mt-4">
-                    <tr>
-                      <th className={th}>Time (IST)</th>
-                      <th className={th}>E-Code</th>
-                      <th className={th}>Name</th>
-                      <th className={th}>Version</th>
-                      <th className={th}>Channel</th>
-                      <th className={th}>Device</th>
-                      <th className={th}>IP address</th>
-                    </tr>
-                  </thead>
-                  <tbody className={`divide-y divide-slate-100 transition-opacity dark:divide-slate-800 ${isLoadingLog ? "opacity-40" : ""}`}>
-                    {rows.length === 0 && (
-                      <tr>
-                        <td className={`${td} h-32`} colSpan={7}>
-                          {isLoadingLog ? "" : appliedCode ? "No downloads for this employee code." : "No downloads recorded yet."}
-                        </td>
-                      </tr>
-                    )}
-                    {rows.map((r, i) => (
-                      <tr key={r.id || `${r.downloaded_at}-${i}`}>
-                        <td className={`${td} whitespace-nowrap`}>{formatDateIST(r.downloaded_at)}</td>
-                        <td className={`${td} font-mono`}>{formatOptional(r.emp_code)}</td>
-                        <td className={td}>{formatOptional(r.employee_name)}</td>
-                        <td className={`${td} font-semibold text-slate-900 dark:text-slate-100`}>{formatOptional(r.version)}</td>
-                        <td className={td}>
-                          <DownloadChannelBadge channel={r.channel} />
-                        </td>
-                        <td className={`${td} max-w-xs break-words`}>{formatOptional(r.device)}</td>
-                        <td className={`${td} font-mono text-xs`}>{formatOptional(r.ip)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {isLoadingLog && (
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 top-12 flex items-start justify-center pt-8" role="status">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-700 shadow dark:bg-slate-800 dark:text-slate-200">
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      Loading page {(loadingPage ?? 0) + 1}…
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
-                <span aria-live="polite" aria-atomic="true" data-testid="log-page-status">
-                  Page {pagination.pageIndex + 1}
-                  {range ? ` · Showing ${range.from}–${range.to}` : ""}
-                </span>
-
-                {logError && (
-                  <span className="flex items-center gap-2 text-red-600 dark:text-red-300" role="alert">
-                    {logError.message}
-                    <button type="button" onClick={retryLog} className="font-semibold underline" aria-label="Retry loading this page">
-                      Retry
-                    </button>
-                  </span>
-                )}
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2">
-                    Rows per page
-                    <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value) as PageSize)} className={inputClass}>
-                      {PAGE_SIZES.map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => goToPage(pagination.pageIndex - 1)}
-                    disabled={!canGoPrevious(pagination) || isLoadingLog}
-                    aria-label="Previous page"
-                    className={secondaryBtn}
-                  >
-                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => goToPage(pagination.pageIndex + 1)}
-                    disabled={!canGoNext(pagination) || isLoadingLog}
-                    aria-label="Next page"
-                    className={secondaryBtn}
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
+        </section>
+      )}
     </section>
   );
 }

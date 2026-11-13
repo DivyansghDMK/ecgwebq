@@ -31,7 +31,7 @@ function logRow(i: number, ageMs: number, emp_code = "DM1", employee_name = "Ash
   };
 }
 
-type Handler = (url: URL, init?: RequestInit) => Response | undefined;
+type Handler = (url: URL, init?: RequestInit) => Response | Promise<Response> | undefined;
 const ok = (data: unknown) => new Response(JSON.stringify({ success: true, data }), { status: 200 });
 
 function stubFetch(handler: Handler = () => undefined) {
@@ -44,7 +44,7 @@ function stubFetch(handler: Handler = () => undefined) {
       if (raw.startsWith("/release-api/")) return ok({ items: [], next_cursor: null });
       if (!raw.startsWith(BASE)) return new Response("<Error/>", { status: 403 });
       const url = new URL(raw);
-      const custom = handler(url, init);
+      const custom = await handler(url, init);
       if (custom) return custom;
       if (url.pathname === "/admin/downloads/summary") return ok({ items: summaryItems });
       if (url.pathname === "/admin/downloads") {
@@ -195,48 +195,130 @@ describe("Employee downloads section", () => {
     expect(within(table).getByText("No employees match this search.")).toBeTruthy();
   });
 
-  it("renders a <script> employee name as plain text", async () => {
-    stubFetch();
+  const rowFor = (table: HTMLElement, code: string) => within(table).getByText(code).closest("tr") as HTMLElement;
+  const logButton = (table: HTMLElement, code: string) => within(rowFor(table, code)).getByRole("button", { name: /view log|hide log/i });
+  const empCodeParams = (calls: { url: string }[]) =>
+    calls.map((c) => new URL(c.url, "http://x").searchParams.get("emp_code")).filter((v): v is string => v !== null);
+
+  it("hides the Download log by default; Last 7 days is still computed", async () => {
+    const calls = stubFetch();
     renderAt("/artists/releases#downloads");
-    expect(await screen.findByText(XSS)).toBeTruthy();
-    expect(document.querySelectorAll("script")).toHaveLength(0);
-    expect(document.body.innerHTML).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    await screen.findByTestId("summary-table");
+    await waitFor(() => expect(within(screen.getByTestId("stat-last7")).getByText("3")).toBeTruthy());
+    expect(screen.queryByTestId("log-table")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /download log/i })).toBeNull();
+    // Only the summary and the 7-day count are requested (limit=200, no emp_code).
+    const logCalls = adminCalls(calls).filter((c) => new URL(c.url).pathname === "/admin/downloads");
+    expect(logCalls.every((c) => new URL(c.url).searchParams.get("limit") === "200")).toBe(true);
+    expect(empCodeParams(calls)).toEqual([]);
+    // No free-text employee-code filter any more.
+    expect(screen.queryByPlaceholderText("e.g. DM485")).toBeNull();
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
   });
 
-  it("'View log' sets the employee-code filter (server-side emp_code)", async () => {
+  it("View log opens the log for that employee (server-side emp_code) and focuses its heading", async () => {
     const calls = stubFetch();
     renderAt("/artists/releases#downloads");
     const table = await screen.findByTestId("summary-table");
-    const neha = within(table).getByText("DM4").closest("tr") as HTMLElement;
-    fireEvent.click(within(neha).getByRole("button", { name: "View log" }));
+    const button = logButton(table, "DM4");
+    expect(button.tagName).toBe("BUTTON");
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(button.getAttribute("aria-controls")).toBe("employee-download-log");
+    fireEvent.click(button);
 
-    expect((screen.getByPlaceholderText("e.g. DM485") as HTMLInputElement).value).toBe("DM4");
-    await waitFor(() => expect(calls.some((c) => new URL(c.url, "http://x").searchParams.get("emp_code") === "DM4")).toBe(true));
+    const heading = await screen.findByRole("heading", { name: "Download log — DM4 · Neha Singh" });
+    expect(document.activeElement).toBe(heading);
+    expect(document.getElementById("employee-download-log")?.contains(heading)).toBe(true);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(button.textContent).toBe("Hide log");
+    await waitFor(() => expect(empCodeParams(calls)).toEqual(["DM4"]));
+
     const log = screen.getByTestId("log-table");
-    await waitFor(() => expect(within(log).getByText("Neha Singh")).toBeTruthy());
+    expect(within(log).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+      "Time (IST)",
+      "Version",
+      "Channel",
+      "Device",
+      "IP address",
+    ]);
+    await waitFor(() => expect(within(log).getByText("1.3.90")).toBeTruthy());
+    expect(within(log).queryByText("Neha Singh")).toBeNull(); // name is in the heading, not the table
   });
 
-  it("an invalid code in the filter is not sent", async () => {
-    const calls = stubFetch();
+  it("Close hides the log and returns focus to that employee's View log button", async () => {
+    stubFetch();
     renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(logButton(table, "DM1"));
     await screen.findByTestId("log-table");
-    const input = screen.getByPlaceholderText("e.g. DM485");
-    fireEvent.change(input, { target: { value: "D1&x" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(await screen.findByText(/Use 2 letters followed by numbers/)).toBeTruthy();
-    expect(calls.some((c) => c.url.includes("emp_code="))).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Close download log" }));
+    expect(screen.queryByTestId("log-table")).toBeNull();
+    const button = logButton(table, "DM1");
+    expect(document.activeElement).toBe(button);
+    expect(button.textContent).toBe("View log");
+    expect(button.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("paginates the log with a cursor stack and page cache", async () => {
+  it("the same View log button toggles the log closed", async () => {
+    stubFetch();
+    renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(logButton(table, "DM1"));
+    await screen.findByTestId("log-table");
+    fireEvent.click(logButton(table, "DM1"));
+    expect(screen.queryByTestId("log-table")).toBeNull();
+    expect(logButton(table, "DM1").textContent).toBe("View log");
+  });
+
+  it("switching employees resets to page 1 and aborts the old request", async () => {
+    let hungSignal: AbortSignal | undefined;
+    const calls = stubFetch((url, init) => {
+      if (url.pathname === "/admin/downloads" && url.searchParams.get("emp_code") === "DM3") {
+        hungSignal = init?.signal ?? undefined;
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        });
+      }
+      return undefined;
+    });
+    renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+
+    // DM1 has 2 pages: go to page 2.
+    fireEvent.click(logButton(table, "DM1"));
+    const status = await screen.findByTestId("log-page-status");
+    await waitFor(() => expect(status.textContent).toBe("Page 1 · Showing 1–20"));
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    await waitFor(() => expect(screen.getByTestId("log-page-status").textContent).toBe("Page 2 · Showing 21–25"));
+
+    // Switch to DM3 (request hangs), then to DM4 before it answers.
+    fireEvent.click(logButton(table, "DM3"));
+    expect(await screen.findByRole("heading", { name: "Download log — DM3 · Bob Left" })).toBeTruthy();
+    await waitFor(() => expect(hungSignal).toBeDefined());
+    expect(screen.getByTestId("log-page-status").textContent).toBe("Page 1");
+    fireEvent.click(logButton(table, "DM4"));
+    expect(hungSignal?.aborted).toBe(true);
+
+    expect(await screen.findByRole("heading", { name: "Download log — DM4 · Neha Singh" })).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId("log-page-status").textContent).toBe("Page 1 · Showing 1–1"));
+    expect(logButton(table, "DM3").textContent).toBe("View log");
+    expect(empCodeParams(calls).slice(-1)).toEqual(["DM4"]);
+  });
+
+  it("paginates the open log with a cursor stack and page cache", async () => {
     const calls = stubFetch();
     renderAt("/artists/releases#downloads");
-    const status = screen.getByTestId("log-page-status");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(logButton(table, "DM1"));
+    const status = await screen.findByTestId("log-page-status");
     await waitFor(() => expect(status.textContent).toBe("Page 1 · Showing 1–20"));
     expect(status.getAttribute("aria-live")).toBe("polite");
 
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
     await waitFor(() => expect(status.textContent).toBe("Page 2 · Showing 21–25"));
-    expect(calls.some((c) => c.url.includes("cursor=p2"))).toBe(true);
+    const p2 = calls.find((c) => c.url.includes("cursor=p2"));
+    expect(new URL(p2!.url).searchParams.get("emp_code")).toBe("DM1");
     expect(screen.getByRole("button", { name: "Next page" })).toHaveProperty("disabled", true);
 
     const before = calls.length;
@@ -255,11 +337,67 @@ describe("Employee downloads section", () => {
     await waitFor(() => expect(status.textContent).toBe("Page 1 · Showing 1–50"));
   });
 
+  it("shows the empty state for an employee with no log rows", async () => {
+    stubFetch((url) =>
+      url.pathname === "/admin/downloads" && url.searchParams.get("emp_code") === "DM4" ? ok({ items: [], next_cursor: null }) : undefined
+    );
+    renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(logButton(table, "DM4"));
+    expect(await screen.findByText("No downloads recorded for this employee.")).toBeTruthy();
+  });
+
+  it("shows a generic error with Retry inside the open log", async () => {
+    let fail = true;
+    stubFetch((url) =>
+      url.pathname === "/admin/downloads" && url.searchParams.get("emp_code") === "DM4" && fail
+        ? new Response(JSON.stringify({ success: false, error: { code: "X", message: "db stack trace" } }), { status: 500 })
+        : undefined
+    );
+    renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(logButton(table, "DM4"));
+    expect(await screen.findByText("The downloads service returned an error.")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("stack trace");
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const log = await screen.findByTestId("log-table");
+    await waitFor(() => expect(within(log).getByText("1.3.90")).toBeTruthy());
+  });
+
+  it("renders a <script> employee name as plain text (table and log heading)", async () => {
+    stubFetch();
+    renderAt("/artists/releases#downloads");
+    expect(await screen.findByText(XSS)).toBeTruthy();
+    fireEvent.click(logButton(screen.getByTestId("summary-table"), "DM5"));
+    expect(await screen.findByRole("heading", { name: `Download log — DM5 · ${XSS}` })).toBeTruthy();
+    expect(document.querySelectorAll("script")).toHaveLength(0);
+    expect(document.body.innerHTML).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    // The selected employee is never put in the URL or storage.
+    expect(screen.getByTestId("location").textContent).toBe("/artists/releases#downloads");
+    expect(JSON.stringify({ ...localStorage })).not.toContain("DM5");
+    expect(JSON.stringify({ ...sessionStorage })).not.toContain("DM5");
+  });
+
+  it("leaving the section clears the selected employee", async () => {
+    stubFetch();
+    renderAt("/artists/releases#downloads");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(logButton(table, "DM1"));
+    await screen.findByTestId("log-table");
+    fireEvent.click(screen.getByRole("tab", { name: "Live now" }));
+    fireEvent.click(screen.getByRole("tab", { name: /employee downloads/i }));
+    await screen.findByTestId("summary-table");
+    expect(screen.queryByTestId("log-table")).toBeNull();
+  });
+
   it("sends the admin token only in the Authorization header", async () => {
     const calls = stubFetch();
     renderAt("/artists/releases#downloads");
-    await screen.findByTestId("summary-table");
+    const table = await screen.findByTestId("summary-table");
+    fireEvent.click(within(table).getAllByRole("button", { name: "View log" })[0]);
     await waitFor(() => expect(screen.getByTestId("log-page-status").textContent).toContain("Showing"));
+    await waitFor(() => expect(within(screen.getByTestId("stat-last7")).getByText("3")).toBeTruthy());
     const admin = adminCalls(calls);
     expect(admin.length).toBeGreaterThan(0);
     for (const call of admin) {
@@ -300,7 +438,8 @@ describe("Employee downloads section", () => {
           : undefined
     );
     renderAt("/artists/releases#downloads");
-    await waitFor(() => expect(screen.getAllByText("No downloads recorded yet.")).toHaveLength(2));
+    await waitFor(() => expect(screen.getAllByText("No downloads recorded yet.")).toHaveLength(1));
+    expect(screen.queryByTestId("log-table")).toBeNull();
     expect(screen.queryByTestId("summary-table")).toBeNull();
     expect(screen.queryByText("Zero Active")).toBeNull();
   });
