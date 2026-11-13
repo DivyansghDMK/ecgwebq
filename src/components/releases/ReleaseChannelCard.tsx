@@ -22,6 +22,17 @@ interface ReleaseChannelCardProps {
   title?: string;
   /** Replaces the default "No release published yet" content (403/404). */
   emptyState?: ReactNode;
+  /**
+   * When set, "Download for Windows" is a button that calls this (e.g. to log the
+   * download first) instead of a plain link. The release passed in is already validated.
+   */
+  onDownload?: (release: LatestRelease) => void;
+  /** Disables the download button and shows "Starting download…". */
+  downloadBusy?: boolean;
+  /** Inline error shown under the download button. */
+  downloadError?: string | null;
+  /** Disables the download button without the busy text (e.g. access revoked). */
+  downloadDisabled?: boolean;
 }
 
 const styles: Record<Variant, Record<string, string>> = {
@@ -79,6 +90,10 @@ export function ReleaseChannelCard({
   showDetails = false,
   title,
   emptyState,
+  onDownload,
+  downloadBusy = false,
+  downloadError = null,
+  downloadDisabled = false,
 }: ReleaseChannelCardProps) {
   const s = styles[variant];
 
@@ -136,7 +151,16 @@ export function ReleaseChannelCard({
       )}
 
       {state.status === "ok" && (
-        <ReleaseDetails release={state.release} variant={variant} showPolicy={showPolicy} showDetails={showDetails} />
+        <ReleaseDetails
+          release={state.release}
+          variant={variant}
+          showPolicy={showPolicy}
+          showDetails={showDetails}
+          onDownload={onDownload}
+          downloadBusy={downloadBusy}
+          downloadError={downloadError}
+          downloadDisabled={downloadDisabled}
+        />
       )}
     </section>
   );
@@ -147,10 +171,19 @@ interface ReleaseDetailsProps {
   variant: Variant;
   showPolicy: boolean;
   showDetails: boolean;
+  onDownload?: (release: LatestRelease) => void;
+  downloadBusy: boolean;
+  downloadError: string | null;
+  downloadDisabled: boolean;
 }
 
-function ReleaseDetails({ release, variant, showPolicy, showDetails }: ReleaseDetailsProps) {
+function ReleaseDetails({ release, variant, showPolicy, showDetails, onDownload, downloadBusy, downloadError, downloadDisabled }: ReleaseDetailsProps) {
   const s = styles[variant];
+  const downloadClass = `flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 font-semibold text-white shadow-lg transition focus:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
+    release.channel === "beta"
+      ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 focus-visible:ring-amber-400/60"
+      : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus-visible:ring-green-400/60"
+  }`;
 
   return (
     <div className="space-y-5">
@@ -190,18 +223,29 @@ function ReleaseDetails({ release, variant, showPolicy, showDetails }: ReleaseDe
         </div>
       )}
 
-      <a
-        href={release.download_url}
-        rel="noopener noreferrer"
-        className={`flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-4 font-semibold text-white shadow-lg transition focus:outline-none focus-visible:ring-2 ${
-          release.channel === "beta"
-            ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 focus-visible:ring-amber-400/60"
-            : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 focus-visible:ring-green-400/60"
-        }`}
-      >
-        <Download className="h-5 w-5" aria-hidden="true" />
-        Download for Windows
-      </a>
+      {onDownload ? (
+        <div className="space-y-3">
+          <button type="button" onClick={() => onDownload(release)} disabled={downloadBusy || downloadDisabled} aria-busy={downloadBusy} className={downloadClass}>
+            {downloadBusy ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Download className="h-5 w-5" aria-hidden="true" />
+            )}
+            {downloadBusy ? "Starting download…" : "Download for Windows"}
+          </button>
+          {downloadError && (
+            <div className={`flex items-start gap-3 rounded-xl p-3 text-sm ${s.error}`} role="alert">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+              <span>{downloadError}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <a href={release.download_url} rel="noopener noreferrer" className={downloadClass}>
+          <Download className="h-5 w-5" aria-hidden="true" />
+          Download for Windows
+        </a>
+      )}
 
       {showDetails && <ChecksumPanel sha256={release.sha256} fileName={fileNameFromUrl(release.download_url)} variant={variant} />}
     </div>

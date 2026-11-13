@@ -8,6 +8,8 @@ interface VersionCardProps {
   isVerified: boolean;
   isLoading: boolean;
   error: string | null;
+  /** Verify is disabled (too many attempts); the error carries the wait message. */
+  isLocked?: boolean;
   onEmpCodeChange: (value: string) => void;
   onVerifyCode: () => void;
   onKeyPress: (e: React.KeyboardEvent) => void;
@@ -19,6 +21,7 @@ export function VersionCard({
   isVerified,
   isLoading,
   error,
+  isLocked = false,
   onEmpCodeChange,
   onVerifyCode,
   onKeyPress,
@@ -57,6 +60,7 @@ export function VersionCard({
 
   // Enhanced verify function with validation
   const handleVerifyCode = () => {
+    if (isLocked || isLoading) return;
     const validationError = validateEmployeeCode(empCode);
     if (validationError) {
       setValidationError(validationError);
@@ -143,8 +147,10 @@ export function VersionCard({
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
               className="flex items-center p-4 bg-red-500/10 border border-red-500/30 rounded-xl backdrop-blur-sm"
+              aria-live="polite"
+              data-testid="verify-error"
             >
-              <AlertCircle className="w-5 h-5 text-red-400 mr-3 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-red-400 mr-3 flex-shrink-0" aria-hidden="true" />
               <span className="text-red-300 text-sm font-medium">{error}</span>
             </motion.div>
           )}
@@ -159,6 +165,7 @@ export function VersionCard({
               <input
                 type="text"
                 value={empCode}
+                autoComplete="off"
                 onChange={(e) => handleInputChange(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Enter your employee code"
@@ -178,11 +185,14 @@ export function VersionCard({
 
           {/* Employee Name (Auto-filled) */}
           <div className="space-y-3">
-            <label className="text-sm font-semibold text-gray-200">Employee Name</label>
+            <label htmlFor="version-employee-name" className="text-sm font-semibold text-gray-200">Employee Name</label>
             <div className="relative">
+              {/* Name shown only after a successful verification, as a plain input value (React text). */}
               <input
+                id="version-employee-name"
                 type="text"
-                value={employeeName}
+                value={isVerified ? employeeName : ''}
+                autoComplete="off"
                 readOnly
                 placeholder="Will be auto-filled after verification"
                 className="w-full px-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-gray-400 placeholder-gray-600 cursor-not-allowed backdrop-blur-sm transition-all duration-300"
@@ -208,7 +218,7 @@ export function VersionCard({
                 whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(251, 146, 60, 0.5)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleVerifyCode}
-                disabled={!empCode.trim() || isLoading || validationError !== null}
+                disabled={!empCode.trim() || isLoading || isLocked || validationError !== null}
                 className="w-full py-4 px-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white font-semibold rounded-2xl hover:from-orange-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-3 backdrop-blur-sm shadow-lg"
               >
                 {isLoading ? (
