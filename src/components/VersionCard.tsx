@@ -78,14 +78,16 @@ export function VersionCard({
     }
   };
 
-  // Show success animation when verified
+  // Show the success banner once per verification, for 3 s; hide it as soon as verification is cleared.
   useEffect(() => {
-    if (isVerified && !isSuccess) {
-      setIsSuccess(true);
-      const timer = setTimeout(() => setIsSuccess(false), 3000);
-      return () => clearTimeout(timer);
+    if (!isVerified) {
+      setIsSuccess(false);
+      return;
     }
-  }, [isVerified, isSuccess]);
+    setIsSuccess(true);
+    const timer = setTimeout(() => setIsSuccess(false), 3000);
+    return () => clearTimeout(timer);
+  }, [isVerified]);
 
   return (
     <motion.div
@@ -112,8 +114,8 @@ export function VersionCard({
             </div>
           </div>
 
-          {/* Success Animation */}
-          {isSuccess && (
+          {/* Success Animation (gated on isVerified so it disappears in the same render as the name) */}
+          {isSuccess && isVerified && (
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}

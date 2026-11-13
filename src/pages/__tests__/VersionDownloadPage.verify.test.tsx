@@ -104,6 +104,43 @@ describe("/version employee-code check (hardened)", () => {
     expect(document.body.textContent).not.toContain("Asha Rao");
   });
 
+  it("changing the code hides the verified banner and line together with the name", async () => {
+    stubVerify([success()]);
+    renderPage();
+    fireEvent.change(codeInput(), { target: { value: "DM485" } });
+    fireEvent.click(verifyButton());
+    await waitFor(() => expect(nameInput().value).toBe("Asha Rao"));
+    await waitFor(() => expect(screen.getByText("Employee verified successfully!")).toBeTruthy());
+    expect(screen.getByText("Access verified — choose a build below.")).toBeTruthy();
+
+    fireEvent.change(codeInput(), { target: { value: "DM48" } });
+    // Same render as the name being cleared.
+    expect(nameInput().value).toBe("");
+    expect(screen.queryByText("Employee verified successfully!")).toBeNull();
+    expect(screen.queryByText("Access verified — choose a build below.")).toBeNull();
+  });
+
+  it("the verified banner hides after 3 s and does not come back", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+    stubVerify([success()]);
+    renderPage();
+    fireEvent.change(codeInput(), { target: { value: "DM485" } });
+    fireEvent.click(verifyButton());
+    await waitFor(() => expect(screen.getByText("Employee verified successfully!")).toBeTruthy());
+
+    await act(async () => {
+      vi.advanceTimersByTime(3_000);
+    });
+    expect(screen.queryByText("Employee verified successfully!")).toBeNull();
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByText("Employee verified successfully!")).toBeNull();
+    // Still verified: the name and the "Access verified" line stay.
+    expect(nameInput().value).toBe("Asha Rao");
+    expect(screen.getByText("Access verified — choose a build below.")).toBeTruthy();
+  });
+
   it("never writes the name or code to localStorage/sessionStorage", async () => {
     stubVerify([success()]);
     renderPage();
