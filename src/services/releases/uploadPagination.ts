@@ -1,19 +1,25 @@
 import type { UploadPage } from "./types";
 
+/** Any cursor page (uploads, download log, …). */
+export interface CursorPage<T = unknown> {
+  items: T[];
+  next_cursor: string | null;
+}
+
 /**
  * Cursor-based pagination without a total count.
  * cursors[i] is the cursor that fetches page i (page 0 uses null);
  * pages caches what each page returned, so Previous never refetches.
  */
-export interface UploadPaginationState {
+export interface UploadPaginationState<P extends CursorPage = UploadPage> {
   pageIndex: number;
   cursors: (string | null)[];
-  pages: Record<number, UploadPage>;
+  pages: Record<number, P>;
 }
 
-export type UploadPaginationAction =
+export type UploadPaginationAction<P extends CursorPage = UploadPage> =
   | { type: "reset" }
-  | { type: "pageLoaded"; index: number; page: UploadPage }
+  | { type: "pageLoaded"; index: number; page: P }
   | { type: "goTo"; index: number };
 
 export const initialUploadPagination: UploadPaginationState = {
@@ -22,10 +28,13 @@ export const initialUploadPagination: UploadPaginationState = {
   pages: {},
 };
 
-export function uploadPaginationReducer(state: UploadPaginationState, action: UploadPaginationAction): UploadPaginationState {
+export function uploadPaginationReducer<P extends CursorPage = UploadPage>(
+  state: UploadPaginationState<P>,
+  action: UploadPaginationAction<P>
+): UploadPaginationState<P> {
   switch (action.type) {
     case "reset":
-      return initialUploadPagination;
+      return { pageIndex: 0, cursors: [null], pages: {} };
 
     case "pageLoaded": {
       // Only accept a page whose cursor is known (i.e. reached by walking forward).
@@ -50,29 +59,29 @@ export function uploadPaginationReducer(state: UploadPaginationState, action: Up
   }
 }
 
-export function currentPage(state: UploadPaginationState): UploadPage | undefined {
+export function currentPage<P extends CursorPage>(state: UploadPaginationState<P>): P | undefined {
   return state.pages[state.pageIndex];
 }
 
-export function canGoPrevious(state: UploadPaginationState): boolean {
+export function canGoPrevious<P extends CursorPage>(state: UploadPaginationState<P>): boolean {
   return state.pageIndex > 0;
 }
 
-export function canGoNext(state: UploadPaginationState): boolean {
+export function canGoNext<P extends CursorPage>(state: UploadPaginationState<P>): boolean {
   return Boolean(currentPage(state)?.next_cursor);
 }
 
-export function isPageCached(state: UploadPaginationState, index: number): boolean {
+export function isPageCached<P extends CursorPage>(state: UploadPaginationState<P>, index: number): boolean {
   return index in state.pages;
 }
 
 /** Cursor needed to fetch page `index`, or undefined if that page is not reachable yet. */
-export function cursorForPage(state: UploadPaginationState, index: number): string | null | undefined {
+export function cursorForPage<P extends CursorPage>(state: UploadPaginationState<P>, index: number): string | null | undefined {
   return index >= 0 && index < state.cursors.length ? state.cursors[index] : undefined;
 }
 
 /** 1-based "Showing Xâ€“Y" range for the current page; null when it has no rows. */
-export function visibleRange(state: UploadPaginationState): { from: number; to: number } | null {
+export function visibleRange<P extends CursorPage>(state: UploadPaginationState<P>): { from: number; to: number } | null {
   const page = currentPage(state);
   if (!page || page.items.length === 0) {
     return null;

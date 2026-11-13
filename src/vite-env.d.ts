@@ -21,6 +21,7 @@ interface ImportMetaEnv {
   readonly VITE_RELEASES_CDN_BASE?: string;
   readonly VITE_RELEASE_API_BASE?: string;
   readonly VITE_USE_MOCK_RELEASE_API?: string;
+  readonly VITE_DOWNLOAD_LOG_API_BASE?: string;
 }
 
 interface ImportMeta {

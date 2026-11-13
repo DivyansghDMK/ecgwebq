@@ -64,8 +64,9 @@ describe("VersionDownloadPage (internal)", () => {
     fireEvent.change(screen.getByPlaceholderText("Enter your employee code"), { target: { value: "DM485" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify Code" }));
 
-    const buttons = await screen.findAllByRole("link", { name: /download for windows/i });
-    expect(buttons.map((b) => b.getAttribute("href"))).toEqual([stableJson.download_url, betaJson.download_url]);
+    // On /version the download is a button (it logs the download first, then starts it).
+    const buttons = await screen.findAllByRole("button", { name: /download for windows/i });
+    expect(buttons).toHaveLength(2);
     expect(screen.getByText("v2.0.0")).toBeTruthy();
     expect(screen.getByText("v2.1.0")).toBeTruthy();
 

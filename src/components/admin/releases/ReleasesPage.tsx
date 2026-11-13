@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useMemo, useReducer, useRef, useState
 import { useLocation, useNavigate } from "react-router-dom";
 import { AlertCircle, ChevronDown, ChevronLeft, ChevronRight, FlaskConical, Loader2, RefreshCw } from "lucide-react";
 import { ReleaseChannelCard } from "@/components/releases/ReleaseChannelCard";
+import { EmployeeDownloadsSection } from "./EmployeeDownloadsSection";
 import { useLatestRelease } from "@/hooks/useLatestRelease";
 import { clearAuthSession } from "@/lib/auth";
 import { formatDateIST, formatOptional, formatSizeMB } from "@/lib/format";
@@ -33,6 +34,19 @@ const selectClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
 const secondaryBtn =
   "inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700";
+
+type SectionId = "live" | "history" | "uploads" | "downloads";
+const SECTIONS: { id: SectionId; label: string; isNew?: boolean }[] = [
+  { id: "live", label: "Live now" },
+  { id: "history", label: "Release history" },
+  { id: "uploads", label: "Upload history" },
+  { id: "downloads", label: "Employee downloads", isNew: true },
+];
+
+function sectionFromHash(hash: string): SectionId {
+  const id = hash.replace(/^#/, "");
+  return SECTIONS.some((s) => s.id === id) ? (id as SectionId) : "live";
+}
 
 const uploadKey = (u: UploadHistoryItem) => `${u.at}|${u.source_key}|${u.version}|${u.result}`;
 
@@ -110,6 +124,31 @@ export default function ReleasesPage() {
   const api = useMemo(() => getReleaseApi(), []);
   // PROD inlined so production builds drop the banner as well.
   const usingMock = !import.meta.env.PROD && isMockReleaseApi();
+
+  const activeSection = sectionFromHash(location.hash);
+  const tabRefs = useRef<Record<SectionId, HTMLButtonElement | null>>({ live: null, history: null, uploads: null, downloads: null });
+
+  const selectSection = (id: SectionId, focus = false) => {
+    if (id !== activeSection) {
+      navigate({ pathname: location.pathname, search: location.search, hash: `#${id}` }, { replace: true });
+    }
+    if (focus) {
+      tabRefs.current[id]?.focus();
+    }
+  };
+
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const index = SECTIONS.findIndex((s) => s.id === activeSection);
+    let next = -1;
+    if (event.key === "ArrowRight") next = (index + 1) % SECTIONS.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + SECTIONS.length) % SECTIONS.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = SECTIONS.length - 1;
+    if (next >= 0) {
+      event.preventDefault();
+      selectSection(SECTIONS[next].id, true);
+    }
+  };
 
   const stable = useLatestRelease("stable");
   const beta = useLatestRelease("beta");
@@ -283,6 +322,41 @@ export default function ReleasesPage() {
         </button>
       </div>
 
+      {/* Section switcher (selected section kept in the URL hash) */}
+      <div role="tablist" aria-label="Releases sections" className="-mt-4 flex flex-wrap gap-2 border-b border-slate-200 dark:border-slate-800">
+        {SECTIONS.map((section) => {
+          const selected = section.id === activeSection;
+          return (
+            <button
+              key={section.id}
+              ref={(el) => {
+                tabRefs.current[section.id] = el;
+              }}
+              type="button"
+              role="tab"
+              id={`releases-tab-${section.id}`}
+              aria-selected={selected}
+              aria-controls={`releases-panel-${section.id}`}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => selectSection(section.id)}
+              onKeyDown={onTabKeyDown}
+              className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 ${
+                selected
+                  ? "border-orange-500 text-orange-600 dark:text-orange-400"
+                  : "border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              }`}
+            >
+              {section.label}
+              {section.isNew && (
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                  New
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {usingMock && (
         <div
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
@@ -294,6 +368,7 @@ export default function ReleasesPage() {
       )}
 
       {/* A. Live now */}
+      <div role="tabpanel" id="releases-panel-live" aria-labelledby="releases-tab-live" hidden={activeSection !== "live"}>
       <section className="space-y-4" aria-labelledby="live-now-title">
         <div>
           <h2 id="live-now-title" className={sectionTitle}>
@@ -306,8 +381,10 @@ export default function ReleasesPage() {
           <ReleaseChannelCard channel="beta" state={beta.state} onRetry={beta.retry} variant="admin" showPolicy showDetails />
         </div>
       </section>
+      </div>
 
       {/* B. Release history */}
+      <div role="tabpanel" id="releases-panel-history" aria-labelledby="releases-tab-history" hidden={activeSection !== "history"}>
       <section className="space-y-4" aria-labelledby="release-history-title">
         <div>
           <h2 id="release-history-title" className={sectionTitle}>
@@ -360,8 +437,10 @@ export default function ReleasesPage() {
           )}
         </div>
       </section>
+      </div>
 
       {/* C. Upload history */}
+      <div role="tabpanel" id="releases-panel-uploads" aria-labelledby="releases-tab-uploads" hidden={activeSection !== "uploads"}>
       <section className="space-y-4" aria-labelledby="upload-history-title">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -538,6 +617,12 @@ export default function ReleasesPage() {
           )}
         </div>
       </section>
+      </div>
+
+      {/* D. Employee downloads (mounted only while selected, so its requests abort when leaving) */}
+      <div role="tabpanel" id="releases-panel-downloads" aria-labelledby="releases-tab-downloads" hidden={activeSection !== "downloads"}>
+        {activeSection === "downloads" && <EmployeeDownloadsSection reloadKey={reloadKey} />}
+      </div>
     </div>
   );
 }
