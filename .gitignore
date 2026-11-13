@@ -1,37 +1,36 @@
-    # Tooling
-    .windsurf/
+# Tooling
+.windsurf/
 
-    # Build outputs
-    dist/
-    build/
+# Build outputs
+dist/
+build/
 
-    # Dependencies
-    node_modules/
-    .npm-cache/
+# Dependencies
+node_modules/
+.npm-cache/
 
-    # Environment variables (real values never go to git)
-    .env
-    .env.*
-    .env.example
+# Environment variables (real values never go to git)
+.env
+.env.*
 
-    # Logs
-    *.log
-    *.local
+# Logs
+*.log
+*.local
 
-    # Cache
-    .cache/
-    .DS_Store
-    vite.config.ts.timestamp*
+# Cache
+.cache/
+.DS_Store
+vite.config.ts.timestamp*
 
-    # Temporary files
-    temp/
-    tmp/
+# Temporary files
+temp/
+tmp/
 
-    # IDE files
-    .vscode/
-    .idea/
-    *.swp
-    *.swo
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
 
-    # OS files
-    Thumbs.db
+# OS files
+Thumbs.db
